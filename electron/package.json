@@ -1,0 +1,55 @@
+{
+  "name": "echo",
+  "version": "1.0.0",
+  "description": "Local push-to-talk voice-to-text",
+  "main": "dist/main/main/index.js",
+  "author": "Kenshiin13",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Kenshiin13/echo.git"
+  },
+  "private": true,
+  "scripts": {
+    "dev": "npm run build && concurrently -k -n MAIN,SETTINGS,INDICATOR,AUDIO,ELECTRON \"tsc -p tsconfig.main.json --watch --preserveWatchOutput\" \"vite build --watch --config vite.settings.config.ts\" \"vite build --watch --config vite.indicator.config.ts\" \"vite build --watch --config vite.audio-capture.config.ts\" \"electron .\"",
+    "build": "npm run build:renderer && npm run build:main",
+    "build:renderer": "vite build --config vite.settings.config.ts && vite build --config vite.indicator.config.ts && vite build --config vite.audio-capture.config.ts",
+    "build:main": "tsc --project tsconfig.main.json",
+    "dist": "npm run build && electron-builder",
+    "dist:win": "npm run build && electron-builder --win",
+    "dist:mac": "npm run build && electron-builder --mac",
+    "rebuild": "electron-builder install-app-deps",
+    "setup:whisper": "node scripts/setup-whisper.mjs"
+  },
+  "dependencies": {
+    "@mantine/core": "^7.17.0",
+    "@mantine/hooks": "^7.17.0",
+    "@nut-tree-fork/nut-js": "^4.2.6",
+    "@tabler/icons-react": "^3.31.0",
+    "electron-store": "^8.2.0",
+    "koffi": "^2.16.0",
+    "nodejs-whisper": "^0.1.17",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "optionalDependencies": {
+    "uiohook-napi": "^1.5.5"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/react": "^18.3.1",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "autoprefixer": "^10.4.20",
+    "concurrently": "^9.1.2",
+    "electron": "^33.4.11",
+    "electron-builder": "^25.1.8",
+    "postcss": "^8.4.47",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.7.3",
+    "vite": "^6.0.9",
+    "wait-on": "^8.0.2"
+  },
+  "build": {
+    "extends": "./electron-builder.config.js"
+  }
+}

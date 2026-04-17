@@ -1,0 +1,105 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@500;600&display=swap');
+
+/* ── wrapper pill ── */
+.indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 16px;
+  background: rgba(10, 16, 30, 0.92);
+  backdrop-filter: blur(18px) saturate(160%);
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-top-color: rgba(255,255,255,0.10);
+  border-radius: 28px;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  color: #E8EDF5;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  animation: slideIn 0.2s cubic-bezier(0.34,1.4,0.64,1) both;
+  box-shadow:
+    0 6px 28px rgba(0,0,0,0.55),
+    0 1px 0 rgba(255,255,255,0.05) inset,
+    0 0 0 1px rgba(0,0,0,0.4);
+}
+
+/* ── standard dot ── */
+.indicator-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 8px var(--accent);
+  flex-shrink: 0;
+}
+
+/* ── label ── */
+.indicator-label {
+  color: var(--accent);
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+/* ── recording: JS-driven waveform bars ── */
+.indicator-wave {
+  display: flex;
+  align-items: flex-end;
+  gap: 2.5px;
+  height: 16px;
+}
+.indicator-wave span {
+  width: 2.5px;
+  min-height: 2px;
+  border-radius: 2px;
+  background: var(--accent);
+  box-shadow: 0 0 4px var(--accent);
+  transition: height 55ms ease-out;
+}
+
+/* ── transcribing: three pulsing dots ── */
+.indicator-dots {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+.indicator-dots span {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: dotPop 1s ease-in-out infinite;
+}
+.indicator-dots span:nth-child(1) { animation-delay: 0s; }
+.indicator-dots span:nth-child(2) { animation-delay: 0.2s; }
+.indicator-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes dotPop {
+  0%, 80%, 100% { transform: scale(0.5); opacity: 0.4; }
+  40%            { transform: scale(1.0); opacity: 1; }
+}
+
+/* ── downloading: progress bar ── */
+.indicator-progress {
+  width: 80px;
+  height: 4px;
+  background: rgba(255,255,255,0.12);
+  border-radius: 2px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.indicator-progress-fill {
+  height: 100%;
+  border-radius: 2px;
+  background: var(--accent);
+  box-shadow: 0 0 6px var(--accent);
+  transition: width 200ms ease-out;
+}
+
+/* ── entrance ── */
+@keyframes slideIn {
+  from { opacity: 0; transform: translateY(8px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}

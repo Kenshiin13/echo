@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Echo</title>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body, #root { width: 100%; height: 100%; background: #0B1220; overflow: hidden; }
+
+      #preloader {
+        position: fixed;
+        inset: 0;
+        background: #0B1220;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 20px;
+        z-index: 9999;
+        transition: opacity 0.35s ease, visibility 0.35s ease;
+      }
+      #preloader.out {
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+      }
+      .pl-wordmark {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        font-size: 22px;
+        font-weight: 700;
+        letter-spacing: 0.28em;
+        text-transform: uppercase;
+        color: #3FA8E0;
+        opacity: 0.9;
+      }
+      .pl-ring {
+        width: 26px;
+        height: 26px;
+        border: 2px solid rgba(63, 168, 224, 0.15);
+        border-top-color: #3FA8E0;
+        border-radius: 50%;
+        animation: pl-spin 0.7s linear infinite;
+      }
+      @keyframes pl-spin { to { transform: rotate(360deg); } }
+    </style>
+  </head>
+  <body>
+    <div id="preloader">
+      <div class="pl-wordmark">echo</div>
+      <div class="pl-ring"></div>
+    </div>
+    <div id="root"></div>
+    <script type="module" src="./main.tsx"></script>
+  </body>
+</html>

@@ -1,0 +1,105 @@
+# --- Python bytecode & caches ---------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.pytype/
+.pyre/
+
+# --- Virtual environments -------------------------------------------------
+.venv/
+venv/
+env/
+ENV/
+.virtualenv/
+
+# --- Build / packaging output ---------------------------------------------
+# PyInstaller intermediate directories
+build/_build-launcher/
+build/_build-installer/
+# Legacy PyInstaller workdir location
+build/build/
+# PyInstaller spec files get regenerated every build
+*.spec
+# Final artifacts
+dist/
+# Setuptools
+*.egg
+*.egg-info/
+.eggs/
+wheels/
+pip-wheel-metadata/
+# Nuitka / cx_Freeze (in case anyone tries alternatives)
+*.bin
+*.build/
+.nuitka/
+
+# --- Runtime / user state -------------------------------------------------
+# These live in APPDATA / Library / .config at runtime and should never be
+# in the repo — but just in case someone runs the app from the repo root:
+echo.log
+voice2text.log
+*.log
+config.json
+
+# --- Secrets / env --------------------------------------------------------
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# --- OS junk --------------------------------------------------------------
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+.Spotlight-V100
+.Trashes
+Icon?
+
+# Linux
+*~
+.fuse_hidden*
+.nfs*
+
+# --- Editor / IDE / tooling -----------------------------------------------
+.idea/
+.vscode/
+.claude/
+*.swp
+*.swo
+*.swn
+.\#*
+\#*\#
+*~
+.project
+.pydevproject
+.settings/
+*.sublime-project
+*.sublime-workspace
+
+# --- Jupyter / notebooks --------------------------------------------------
+.ipynb_checkpoints/
+
+# --- Local notes / scratch (don't commit personal drafts) ----------------
+/scratch/
+/notes.md
+/TODO.md
+
+# --- Downloaded models / HF cache (if ever mirrored locally) -------------
+# By default HF caches to ~/.cache/huggingface which is outside the repo,
+# but if anyone overrides HF_HOME to point inside the project, ignore it:
+/models/
+/.cache/
+/hf_cache/

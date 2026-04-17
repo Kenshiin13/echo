@@ -1,0 +1,65 @@
+import { contextBridge, ipcRenderer } from "electron";
+import type { Config, SystemInfo, IndicatorState } from "../shared/types";
+
+const api = {
+  // Settings window
+  getConfig: (): Promise<Config> =>
+    ipcRenderer.invoke("settings:get-config"),
+
+  getSystemInfo: (): Promise<SystemInfo> =>
+    ipcRenderer.invoke("settings:get-system-info"),
+
+  saveConfig: (config: Config): Promise<{ ok: boolean; error?: string }> =>
+    ipcRenderer.invoke("settings:save", config),
+
+  restart: (): void => ipcRenderer.send("app:restart"),
+  closeSettings: (): void => ipcRenderer.send("settings:close"),
+
+  // Indicator overlay
+  onIndicatorState: (cb: (state: IndicatorState) => void): (() => void) => {
+    const handler = (_: Electron.IpcRendererEvent, state: IndicatorState) => cb(state);
+    ipcRenderer.on("indicator:state", handler);
+    return () => ipcRenderer.removeListener("indicator:state", handler);
+  },
+
+  // Audio capture window
+  onAudioStart: (cb: () => void): void => {
+    ipcRenderer.on("audio:start", () => cb());
+  },
+
+  onAudioStop: (cb: () => void): void => {
+    ipcRenderer.on("audio:stop", () => cb());
+  },
+
+  sendAudioData: (base64: string): void => {
+    ipcRenderer.send("audio:data", base64);
+  },
+
+  sendAudioLevel: (rms: number): void => {
+    ipcRenderer.send("audio:level", rms);
+  },
+
+  onAudioLevel: (cb: (rms: number) => void): (() => void) => {
+    const handler = (_: Electron.IpcRendererEvent, rms: number) => cb(rms);
+    ipcRenderer.on("indicator:level", handler);
+    return () => ipcRenderer.removeListener("indicator:level", handler);
+  },
+
+  onDownloadProgress: (cb: (percent: number) => void): (() => void) => {
+    const handler = (_: Electron.IpcRendererEvent, pct: number) => cb(pct);
+    ipcRenderer.on("indicator:download-progress", handler);
+    return () => ipcRenderer.removeListener("indicator:download-progress", handler);
+  },
+
+  // Model management
+  listModels: (): Promise<string[]> => ipcRenderer.invoke("model:list"),
+  deleteModel: (modelSize: string): Promise<void> => ipcRenderer.invoke("model:delete", modelSize),
+};
+
+contextBridge.exposeInMainWorld("echo", api);
+
+declare global {
+  interface Window {
+    echo: typeof api;
+  }
+}

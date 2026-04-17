@@ -1,0 +1,165 @@
+name: Release
+
+# Triggers:
+#   - Pushing a tag that starts with `v` (e.g. `v1.2.0`) runs the full build
+#     and creates/updates a GitHub Release with the artifacts attached.
+#   - `workflow_dispatch` lets you run the builds manually from the Actions
+#     tab without cutting a release (artifacts stay as workflow artifacts).
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write   # required for softprops/action-gh-release to create releases
+
+jobs:
+  # ---------------------------------------------------------------------------
+  build-windows:
+    name: Build Windows (x64)
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: electron/package-lock.json
+
+      - name: Install dependencies
+        working-directory: electron
+        run: npm ci --legacy-peer-deps
+
+      - name: Bundle whisper.cpp binary + base model
+        working-directory: electron
+        run: npm run setup:whisper
+
+      - name: Build renderer + main
+        working-directory: electron
+        run: npm run build
+
+      - name: Package (electron-builder)
+        working-directory: electron
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npx electron-builder --win --x64 --publish never
+
+      - name: Show output
+        shell: bash
+        run: ls -la dist/electron-release/
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: echo-windows-x64
+          path: dist/electron-release/*.exe
+          if-no-files-found: error
+          retention-days: 14
+
+  # ---------------------------------------------------------------------------
+  build-macos-arm64:
+    name: Build macOS (Apple Silicon)
+    runs-on: macos-latest      # GitHub's default macOS runner is arm64
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: electron/package-lock.json
+
+      - name: Install dependencies
+        working-directory: electron
+        run: npm ci --legacy-peer-deps
+
+      - name: Bundle whisper.cpp binary + base model
+        working-directory: electron
+        run: npm run setup:whisper
+
+      - name: Build renderer + main
+        working-directory: electron
+        run: npm run build
+
+      - name: Package (electron-builder)
+        working-directory: electron
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npx electron-builder --mac --arm64 --publish never
+
+      - name: Show output
+        run: ls -la dist/electron-release/
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: echo-macos-arm64
+          path: dist/electron-release/*.dmg
+          if-no-files-found: error
+          retention-days: 14
+
+  # ---------------------------------------------------------------------------
+  # Intel macOS — uncomment to ship an x86_64 build too.
+  # macOS 13 is the last GitHub-hosted Intel runner image.
+  # ---------------------------------------------------------------------------
+  # build-macos-intel:
+  #   name: Build macOS (Intel)
+  #   runs-on: macos-13
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: actions/setup-node@v4
+  #       with:
+  #         node-version: '20'
+  #         cache: 'npm'
+  #         cache-dependency-path: electron/package-lock.json
+  #     - run: npm ci --legacy-peer-deps
+  #       working-directory: electron
+  #     - run: npm run build
+  #       working-directory: electron
+  #     - run: npx electron-builder --mac --x64 --publish never
+  #       working-directory: electron
+  #       env:
+  #         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  #     - uses: actions/upload-artifact@v4
+  #       with:
+  #         name: echo-macos-x64
+  #         path: dist/electron-release/*.dmg
+  #         if-no-files-found: error
+  #         retention-days: 14
+
+  # ---------------------------------------------------------------------------
+  # Collect all artifacts and publish them as a GitHub Release.
+  # Only runs for tag pushes — manual runs leave the artifacts on the run.
+  # ---------------------------------------------------------------------------
+  release:
+    name: Publish GitHub Release
+    needs: [build-windows, build-macos-arm64]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Flatten artifacts
+        run: |
+          mkdir -p release
+          find artifacts -type f -exec mv {} release/ \;
+          echo "--- release contents ---"
+          ls -la release/
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release/*
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          fail_on_unmatched_files: true
