@@ -31,8 +31,8 @@ const api = {
     ipcRenderer.on("audio:stop", () => cb());
   },
 
-  sendAudioData: (base64: string): void => {
-    ipcRenderer.send("audio:data", base64);
+  sendAudioData: (pcm: Uint8Array): void => {
+    ipcRenderer.send("audio:data", pcm);
   },
 
   sendAudioLevel: (rms: number): void => {

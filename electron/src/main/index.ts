@@ -128,6 +128,12 @@ async function main() {
     windows.updateIndicator("idle");
   }
 
+  // Preload the Whisper model into the persistent server subprocess so the
+  // first transcription doesn't pay a cold model-load cost.
+  transcriber.ensureStarted().catch((err) => {
+    log.error("Initial whisper-server start failed:", err);
+  });
+
   hotkey.start();
 
   // Show a one-time "moved to tray" notification on first ever launch
@@ -152,6 +158,7 @@ async function main() {
   app.on("window-all-closed", () => { /* keep alive — tray app */ });
   app.on("before-quit", () => {
     hotkey.stop();
+    transcriber.destroy();
     lock.release();
   });
 

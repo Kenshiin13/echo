@@ -73,12 +73,12 @@ export class RecordingSession {
     if (this.ipcRegistered) return;
     this.ipcRegistered = true;
 
-    ipcMain.on("audio:data", (_e, pcmBase64: string) => {
+    ipcMain.on("audio:data", (_e, pcmBytes: Uint8Array) => {
       if (!this.pendingDone) return;
       const cb = this.pendingDone;
       this.pendingDone = null;
 
-      const pcm = Buffer.from(pcmBase64, "base64");
+      const pcm = Buffer.from(pcmBytes.buffer, pcmBytes.byteOffset, pcmBytes.byteLength);
       if (pcm.length < 3200) {
         log.info("Recording too short, ignoring");
         this.onSkipped(); // let the caller hide the indicator

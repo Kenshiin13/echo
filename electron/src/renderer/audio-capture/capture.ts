@@ -1,6 +1,6 @@
 // Hidden audio capture window — no UI.
 // Records 16 kHz mono PCM via getUserMedia + AudioWorklet,
-// then sends raw 16-bit PCM to main as a base64 string over IPC.
+// then sends raw 16-bit PCM to main as a Uint8Array (structured-clone, no base64).
 // Also emits throttled RMS levels so the indicator can show a live waveform.
 
 const TARGET_SAMPLE_RATE = 16000;
@@ -66,7 +66,7 @@ async function startCapture() {
   workletNode.connect(audioCtx.destination);
 }
 
-function stopCapture(): string {
+function stopCapture(): Uint8Array {
   workletNode?.disconnect();
   workletNode = null;
 
@@ -89,14 +89,7 @@ function stopCapture(): string {
     pcm16[i] = Math.max(-32768, Math.min(32767, Math.round(merged[i] * 32767)));
   }
 
-  // Chunked btoa — avoids V8 max-argument-count limit for long recordings
-  const bytes = new Uint8Array(pcm16.buffer);
-  const CHUNK = 8192;
-  let binary = "";
-  for (let i = 0; i < bytes.length; i += CHUNK) {
-    binary += String.fromCharCode(...bytes.subarray(i, i + CHUNK));
-  }
-  return btoa(binary);
+  return new Uint8Array(pcm16.buffer);
 }
 
 window.echo.onAudioStart(async () => {
@@ -109,10 +102,10 @@ window.echo.onAudioStart(async () => {
 
 window.echo.onAudioStop(() => {
   try {
-    const base64 = stopCapture();
-    window.echo.sendAudioData(base64);
+    const pcm = stopCapture();
+    window.echo.sendAudioData(pcm);
   } catch (err) {
     console.error("[audio-capture] stop failed:", err);
-    window.echo.sendAudioData(""); // filtered as too-short in main
+    window.echo.sendAudioData(new Uint8Array(0)); // filtered as too-short in main
   }
 });
