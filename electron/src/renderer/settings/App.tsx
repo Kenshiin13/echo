@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import {
   Stack, Group, Text, Button, Select, Switch,
   Badge, Loader, Alert, Box, ScrollArea, ActionIcon,
-  PasswordInput, HoverCard, Anchor,
+  PasswordInput, HoverCard, Anchor, Modal,
 } from "@mantine/core";
 import {
   IconAlertCircle, IconCheck, IconRefresh,
@@ -155,6 +155,7 @@ export function App() {
   const [needsRestart, setNeedsRestart] = useState(false);
   const [downloadedModels, setDownloadedModels] = useState<string[]>([]);
   const [deletingModel, setDeletingModel] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const didFireReady = useRef(false);
 
   useEffect(() => {
@@ -171,6 +172,7 @@ export function App() {
 
   async function handleDeleteModel(modelSize: string) {
     setDeletingModel(modelSize);
+    setConfirmDelete(null);
     await window.echo.deleteModel(modelSize);
     const models = await window.echo.listModels();
     setDownloadedModels(models);
@@ -332,7 +334,7 @@ export function App() {
                       radius="sm"
                       loading={deletingModel === m}
                       disabled={deletingModel !== null}
-                      onClick={() => handleDeleteModel(m)}
+                      onClick={() => setConfirmDelete(m)}
                       aria-label={`Delete ${m} model`}
                     >
                       <IconTrash size={13} />
@@ -575,6 +577,44 @@ export function App() {
           </Group>
         </Stack>
       </Box>
+
+      <Modal
+        opened={confirmDelete !== null}
+        onClose={() => setConfirmDelete(null)}
+        title="Delete model?"
+        centered
+        radius="md"
+        overlayProps={{ backgroundOpacity: 0.5, blur: 3 }}
+      >
+        <Stack gap="md">
+          <Text size="sm">
+            Delete{" "}
+            <Text span fw={600} c="echo.4">
+              {confirmDelete ? (MODEL_LABELS[confirmDelete] ?? confirmDelete) : ""}
+            </Text>
+            ? You can re-download it any time, but it'll need to be fetched again.
+          </Text>
+          {confirmDelete === config?.modelSize && (
+            <Alert icon={<IconAlertCircle size={14} />} color="yellow" variant="light" radius="md" p="xs">
+              <Text size="xs">
+                This is your <Text span fw={600}>currently active</Text> model. Transcription will be unavailable until you pick another model or re-download.
+              </Text>
+            </Alert>
+          )}
+          <Group justify="flex-end" gap="sm">
+            <Button variant="default" onClick={() => setConfirmDelete(null)}>
+              Cancel
+            </Button>
+            <Button
+              color="red"
+              leftSection={<IconTrash size={14} />}
+              onClick={() => confirmDelete && handleDeleteModel(confirmDelete)}
+            >
+              Delete
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
     </Box>
   );
 }

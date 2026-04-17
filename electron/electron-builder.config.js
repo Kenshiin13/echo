@@ -69,9 +69,14 @@ module.exports = {
       { target: "dmg", arch: ["arm64"] },
       { target: "dmg", arch: ["x64"] },
     ],
-    entitlements: "build-resources/entitlements.mac.plist",
-    entitlementsInherit: "build-resources/entitlements.mac.plist",
-    hardenedRuntime: true,
+    // We don't have an Apple Developer ID, so we ship unsigned.
+    // `hardenedRuntime: true` with a missing/invalid signature makes Gatekeeper
+    // report the app as "damaged" with no right-click bypass — worse UX than
+    // shipping plain unsigned. `identity: null` tells electron-builder to skip
+    // signing entirely so Gatekeeper falls back to the normal "unidentified
+    // developer" prompt that users can bypass with right-click → Open (and, in
+    // the worst case, by clearing the quarantine xattr — see README).
+    identity: null,
   },
   dmg: {
     contents: [

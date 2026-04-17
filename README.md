@@ -43,7 +43,13 @@ Download the latest installer from the [Releases page](https://github.com/Kenshi
 | Windows 10/11 (x64) | `Echo-Setup-X.Y.Z.exe` |
 | macOS (Apple Silicon) | `Echo-X.Y.Z-arm64.dmg` |
 
-> **macOS note:** the build is unsigned for now. Right-click the app → **Open** on first launch to bypass Gatekeeper.
+> **macOS note:** the build is unsigned (no paid Apple Developer ID). After dragging **Echo** to Applications, right-click the app → **Open** on first launch to bypass Gatekeeper.
+>
+> If macOS still refuses with *"Echo is damaged and can't be opened"*, it's the quarantine flag from the download. Clear it with:
+>
+> ```bash
+> xattr -cr /Applications/Echo.app && open /Applications/Echo.app
+> ```
 
 On first launch, Echo will auto-download the selected whisper model (`base` by default, ~142 MB) with a progress indicator. If you have an NVIDIA GPU and select the **CUDA** backend, it will also download the CUDA-enabled binary.
 
