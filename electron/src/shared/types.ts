@@ -11,6 +11,10 @@ export interface Config {
   autoPaste: boolean;
   autostart: boolean;
   voiceActivation: boolean;
+  /** ISO language code to auto-translate the transcript into, via DeepL. null = disabled. */
+  translateTo: string | null;
+  /** DeepL API key. Keys ending in ":fx" use the free endpoint; others use pro. */
+  deeplApiKey: string;
   indicatorHideDelayMs: number;
 }
 
@@ -23,6 +27,8 @@ export const DEFAULT_CONFIG: Config = {
   autoPaste: true,
   autostart: false,
   voiceActivation: false,
+  translateTo: null,
+  deeplApiKey: "",
   indicatorHideDelayMs: 1200,
 };
 

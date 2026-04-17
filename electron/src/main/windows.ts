@@ -148,6 +148,23 @@ export class WindowManager {
     }
 
     win.webContents.send("indicator:state", state);
-    if (!win.isVisible()) win.show();
+    if (!win.isVisible()) {
+      win.show();
+      this.reassertAlwaysOnTop(win);
+    }
+  }
+
+  // On Windows, a BrowserWindow's screen-saver-level z-order can drift after
+  // focus switches or hide/show cycles, which causes the indicator to fall
+  // behind other app windows (it ends up "only visible on the desktop"). We
+  // re-apply the level and force it to the top on every show() to pin it.
+  private reassertAlwaysOnTop(win: BrowserWindow): void {
+    try {
+      win.setAlwaysOnTop(false);
+      win.setAlwaysOnTop(true, "screen-saver");
+      win.moveTop();
+    } catch {
+      // non-fatal — indicator will self-correct on next show
+    }
   }
 }

@@ -2,11 +2,13 @@ import React, { useEffect, useRef, useState } from "react";
 import {
   Stack, Group, Text, Button, Select, Switch,
   Badge, Loader, Alert, Box, ScrollArea, ActionIcon,
+  PasswordInput, HoverCard, Anchor,
 } from "@mantine/core";
 import {
   IconAlertCircle, IconCheck, IconRefresh,
   IconMicrophone, IconCpu, IconBrain,
   IconBolt, IconInfoCircle, IconX, IconTrash,
+  IconLanguage, IconCloudUpload,
 } from "@tabler/icons-react";
 import type { Config, SystemInfo } from "@shared/types";
 import { SectionLabel } from "./components/SectionLabel";
@@ -340,6 +342,114 @@ export function App() {
               </Stack>
             </Card>
           )}
+
+          {/* Translation */}
+          <Card delay={110}>
+            <Stack gap={14}>
+              <Group gap={8}>
+                <IconLanguage size={14} color="var(--accent)" />
+                <SectionLabel>Translation</SectionLabel>
+              </Group>
+              <Select
+                label="Translate transcription to"
+                description="Automatically translate your transcript into this language via DeepL. Skipped if you're already speaking it."
+                value={config.translateTo ?? "off"}
+                onChange={(v) => patch("translateTo", v === "off" || !v ? null : v)}
+                data={[
+                  { value: "off", label: "Off — transcribe only" },
+                  { value: "EN", label: "English" },
+                  { value: "DE", label: "German" },
+                  { value: "FR", label: "French" },
+                  { value: "ES", label: "Spanish" },
+                  { value: "IT", label: "Italian" },
+                  { value: "PT", label: "Portuguese" },
+                  { value: "NL", label: "Dutch" },
+                  { value: "PL", label: "Polish" },
+                  { value: "RU", label: "Russian" },
+                  { value: "UK", label: "Ukrainian" },
+                  { value: "ZH", label: "Chinese" },
+                  { value: "JA", label: "Japanese" },
+                  { value: "KO", label: "Korean" },
+                  { value: "TR", label: "Turkish" },
+                  { value: "SV", label: "Swedish" },
+                  { value: "DA", label: "Danish" },
+                  { value: "FI", label: "Finnish" },
+                  { value: "NB", label: "Norwegian" },
+                  { value: "CS", label: "Czech" },
+                  { value: "EL", label: "Greek" },
+                  { value: "HU", label: "Hungarian" },
+                  { value: "RO", label: "Romanian" },
+                  { value: "BG", label: "Bulgarian" },
+                  { value: "SK", label: "Slovak" },
+                  { value: "SL", label: "Slovenian" },
+                  { value: "LT", label: "Lithuanian" },
+                  { value: "LV", label: "Latvian" },
+                  { value: "ET", label: "Estonian" },
+                  { value: "ID", label: "Indonesian" },
+                ]}
+              />
+
+              {config.translateTo && (
+                <Alert
+                  icon={<IconCloudUpload size={14} />}
+                  color="yellow"
+                  variant="light"
+                  radius="md"
+                  p="xs"
+                >
+                  <Text size="xs">
+                    Translation mode sends your transcript to DeepL's servers. Your audio stays
+                    local — only the text leaves your machine, and only when the detected
+                    language differs from the target.
+                  </Text>
+                </Alert>
+              )}
+
+              <PasswordInput
+                label={
+                  <Group gap={4} wrap="nowrap">
+                    <Text size="sm" fw={500}>DeepL API key</Text>
+                    <HoverCard width={300} shadow="md" withArrow openDelay={100} closeDelay={200}>
+                      <HoverCard.Target>
+                        <IconInfoCircle size={13} style={{ cursor: "help", color: "var(--muted)" }} />
+                      </HoverCard.Target>
+                      <HoverCard.Dropdown>
+                        <Text size="xs">
+                          Create a free DeepL account, then copy your API key from the
+                          "Account" tab. Free keys end in <code>:fx</code> and include
+                          500,000 characters/month.
+                        </Text>
+                        <Anchor
+                          href="https://www.deepl.com/your-account/keys"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          size="xs"
+                          c="echo.4"
+                          mt={6}
+                          style={{ display: "inline-block" }}
+                        >
+                          Open DeepL API keys page →
+                        </Anchor>
+                      </HoverCard.Dropdown>
+                    </HoverCard>
+                  </Group>
+                }
+                description={
+                  config.translateTo && !config.deeplApiKey.trim()
+                    ? "Required to enable translation."
+                    : "Stored locally. Free keys end in :fx."
+                }
+                placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx:fx"
+                value={config.deeplApiKey}
+                onChange={(e) => patch("deeplApiKey", e.currentTarget.value)}
+                error={
+                  config.translateTo && !config.deeplApiKey.trim()
+                    ? "API key required for translation"
+                    : undefined
+                }
+              />
+            </Stack>
+          </Card>
 
           {/* Behaviour */}
           <Card delay={120}>

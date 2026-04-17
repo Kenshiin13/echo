@@ -23,7 +23,8 @@
 
 - **Global push-to-talk** — press a hotkey anywhere (default `F9`), speak, release. Transcript is pasted at your cursor.
 - **Voice activation (optional)** — hands-free mode powered by [Silero VAD](https://github.com/snakers4/silero-vad). Flip it on in Settings and Echo auto-transcribes each utterance as you speak. Ignores non-speech noise.
-- **Fully local** — all transcription runs on-device via [whisper.cpp](https://github.com/ggml-org/whisper.cpp). Nothing leaves your machine.
+- **Fully local transcription** — all audio and transcription stays on-device via [whisper.cpp](https://github.com/ggml-org/whisper.cpp). Your voice never leaves your machine.
+- **Automatic translation (optional)** — point Echo at a target language and it will translate each transcript via [DeepL](https://www.deepl.com/) before pasting. Skipped automatically when you're already speaking the target language. Audio still stays local; only the transcript text is sent.
 - **Low-latency transcription** — Whisper runs as a persistent `whisper-server` process with the model kept resident in memory, so every utterance skips cold-load overhead.
 - **GPU acceleration** — CUDA on Windows (NVIDIA), Metal on Apple Silicon, CPU fallback everywhere.
 - **Five model sizes** — from 75 MB (`tiny`) to 1.6 GB (`large-v3-turbo`). Pick the accuracy/speed tradeoff you want.
@@ -74,6 +75,8 @@ Open settings from the tray icon. Everything is persisted to `electron-store` in
 | Compute backend | Auto | `CPU` / `CUDA` / `MLX` — auto-selected based on hardware |
 | Auto-paste | On | Off = copy to clipboard only |
 | Voice activation | Off | Always-listening mode using Silero VAD (disables the hotkey) |
+| Translate transcription to | Off | Target language for automatic DeepL translation; skipped when you already speak it |
+| DeepL API key | — | Required only when a translation target is set. Free keys end in `:fx` and include 500k chars/month |
 | Start at login | Off | |
 
 ## Build from source
@@ -104,6 +107,7 @@ Releases are automated — pushing a `v*` tag (e.g. `v1.2.0`) triggers the [rele
 - **[Mantine v7](https://mantine.dev/) + [Tailwind](https://tailwindcss.com/)** — UI
 - **[whisper.cpp](https://github.com/ggml-org/whisper.cpp)** — transcription engine, run as a long-lived `whisper-server` subprocess with the model kept resident in RAM
 - **[Silero VAD](https://github.com/snakers4/silero-vad)** via [@ricky0123/vad-web](https://github.com/ricky0123/vad) — neural voice activity detection for the voice-activation mode
+- **[DeepL API](https://www.deepl.com/pro-api)** — optional cloud translation layer between Whisper and paste
 - **[koffi](https://koffi.dev/)** — FFI for global key polling on Windows
 - **[@nut-tree-fork/nut-js](https://github.com/nut-tree/nut.js)** — keyboard simulation for auto-paste
 - **[electron-store](https://github.com/sindresorhus/electron-store)** — config persistence

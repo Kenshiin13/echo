@@ -5,6 +5,7 @@ import { SystemInfo } from "../shared/types";
 import { log } from "./logger";
 import { getModelPath, getWhisperCppDir } from "./model-downloader";
 import { WhisperServer } from "./whisper-server";
+import { translateViaDeepL } from "./deepl";
 
 type DoneCallback = (text: string) => void;
 
@@ -51,11 +52,29 @@ export class Transcriber {
     this.busy = true;
     try {
       const wav = wrapPcmAsWav(pcmBuffer);
-      const text = await this.server!.transcribe(wav, this.config.get().language);
-      this.onDone(text);
+      const { text, language } = await this.server!.transcribe(wav, this.config.get().language);
+
+      const final = await this.maybeTranslate(text, language);
+      this.onDone(final);
     } finally {
       this.busy = false;
     }
+  }
+
+  private async maybeTranslate(text: string, detectedLang: string | null): Promise<string> {
+    if (!text.trim()) return text;
+
+    const cfg = this.config.get();
+    const target = cfg.translateTo;
+    if (!target) return text;                         // translation disabled
+    if (!cfg.deeplApiKey.trim()) return text;         // no key configured — skip silently
+    if (detectedLang && detectedLang.toLowerCase() === target.toLowerCase()) {
+      log.info(`Translation skipped — already in target (${target})`);
+      return text;
+    }
+
+    log.info(`Translating via DeepL: ${detectedLang ?? "?"} → ${target}`);
+    return translateViaDeepL(text, target, cfg.deeplApiKey);
   }
 
   destroy(): void {

@@ -9,6 +9,12 @@ export interface WhisperServerOptions {
   language: string | null;
 }
 
+export interface TranscribeResult {
+  text: string;
+  /** Detected source language as an ISO 639-1 code ("en", "de", …), or null. */
+  language: string | null;
+}
+
 export class WhisperServer {
   private proc: ChildProcess | null = null;
   private port = 0;
@@ -70,13 +76,15 @@ export class WhisperServer {
     throw new Error("whisper-server failed to become ready within 60s");
   }
 
-  async transcribe(wavBuffer: Buffer, language: string | null): Promise<string> {
+  async transcribe(wavBuffer: Buffer, language: string | null): Promise<TranscribeResult> {
     if (!this.proc) throw new Error("whisper-server not running");
 
     const form = new FormData();
     const ab = wavBuffer.buffer.slice(wavBuffer.byteOffset, wavBuffer.byteOffset + wavBuffer.byteLength) as ArrayBuffer;
     form.append("file", new Blob([ab], { type: "audio/wav" }), "audio.wav");
-    form.append("response_format", "json");
+    // verbose_json gives us the detected language alongside the text so we can
+    // decide whether a DeepL translation is needed.
+    form.append("response_format", "verbose_json");
     form.append("temperature", "0.0");
     if (language) form.append("language", language);
 
@@ -89,8 +97,11 @@ export class WhisperServer {
       throw new Error(`whisper-server HTTP ${res.status}: ${body}`);
     }
 
-    const json = (await res.json()) as { text?: string };
-    return (json.text ?? "").trim();
+    const json = (await res.json()) as { text?: string; language?: string };
+    return {
+      text: (json.text ?? "").trim(),
+      language: json.language ?? null,
+    };
   }
 
   stop(): void {

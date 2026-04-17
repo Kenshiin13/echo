@@ -22,6 +22,8 @@ export class ConfigStore {
       autoPaste: this.store.get("autoPaste"),
       autostart: this.store.get("autostart"),
       voiceActivation: this.store.get("voiceActivation"),
+      translateTo: this.store.get("translateTo"),
+      deeplApiKey: this.store.get("deeplApiKey"),
       indicatorHideDelayMs: this.store.get("indicatorHideDelayMs"),
     };
   }
