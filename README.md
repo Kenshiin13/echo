@@ -3,8 +3,8 @@
 </p>
 
 <p align="center">
-  <b>Local push-to-talk voice-to-text, anywhere on your desktop.</b><br/>
-  Hold a hotkey, speak, release — your words get pasted into whatever window you're in.
+  <b>Local voice-to-text, anywhere on your desktop.</b><br/>
+  Push-to-talk with a hotkey — or flip on voice activation and just start talking. Your words get pasted into whatever window you're in.
 </p>
 
 <p align="center">
@@ -22,7 +22,9 @@
 ## Features
 
 - **Global push-to-talk** — press a hotkey anywhere (default `F9`), speak, release. Transcript is pasted at your cursor.
+- **Voice activation (optional)** — hands-free mode powered by [Silero VAD](https://github.com/snakers4/silero-vad). Flip it on in Settings and Echo auto-transcribes each utterance as you speak. Ignores non-speech noise.
 - **Fully local** — all transcription runs on-device via [whisper.cpp](https://github.com/ggml-org/whisper.cpp). Nothing leaves your machine.
+- **Low-latency transcription** — Whisper runs as a persistent `whisper-server` process with the model kept resident in memory, so every utterance skips cold-load overhead.
 - **GPU acceleration** — CUDA on Windows (NVIDIA), Metal on Apple Silicon, CPU fallback everywhere.
 - **Five model sizes** — from 75 MB (`tiny`) to 1.6 GB (`large-v3-turbo`). Pick the accuracy/speed tradeoff you want.
 - **14 languages + auto-detect** — English, German, French, Spanish, Italian, Portuguese, Dutch, Russian, Chinese, Japanese, Korean, Arabic…
@@ -46,9 +48,16 @@ On first launch, Echo will auto-download the selected whisper model (`base` by d
 
 ## Usage
 
+**Push-to-talk (default):**
+
 1. Press and hold **F9** (or your custom hotkey).
 2. Speak.
 3. Release — your transcript gets pasted into whatever text field has focus.
+
+**Voice activation:**
+
+1. Open Settings → toggle **Voice activation** on → **Save changes**.
+2. Just speak. Echo detects the start and end of each utterance and pastes it automatically. The hotkey is disabled while voice activation is on; the mic stays live the whole time.
 
 The tray icon gives you quick access to settings, the model picker, and quit.
 
@@ -64,6 +73,7 @@ Open settings from the tray icon. Everything is persisted to `electron-store` in
 | Language | Auto-detect | Pick one for better accuracy if auto-detect mis-fires |
 | Compute backend | Auto | `CPU` / `CUDA` / `MLX` — auto-selected based on hardware |
 | Auto-paste | On | Off = copy to clipboard only |
+| Voice activation | Off | Always-listening mode using Silero VAD (disables the hotkey) |
 | Start at login | Off | |
 
 ## Build from source
@@ -92,7 +102,8 @@ Releases are automated — pushing a `v*` tag (e.g. `v1.2.0`) triggers the [rele
 - **[Electron 33](https://www.electronjs.org/)** — shell
 - **[React 18](https://react.dev/) + [Vite 6](https://vite.dev/)** — renderer (three entries: settings, indicator overlay, audio capture)
 - **[Mantine v7](https://mantine.dev/) + [Tailwind](https://tailwindcss.com/)** — UI
-- **[whisper.cpp](https://github.com/ggml-org/whisper.cpp)** — transcription engine, invoked from a worker thread
+- **[whisper.cpp](https://github.com/ggml-org/whisper.cpp)** — transcription engine, run as a long-lived `whisper-server` subprocess with the model kept resident in RAM
+- **[Silero VAD](https://github.com/snakers4/silero-vad)** via [@ricky0123/vad-web](https://github.com/ricky0123/vad) — neural voice activity detection for the voice-activation mode
 - **[koffi](https://koffi.dev/)** — FFI for global key polling on Windows
 - **[@nut-tree-fork/nut-js](https://github.com/nut-tree/nut.js)** — keyboard simulation for auto-paste
 - **[electron-store](https://github.com/sindresorhus/electron-store)** — config persistence

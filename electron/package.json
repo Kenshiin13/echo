@@ -1,6 +1,6 @@
 {
   "name": "echo",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Local push-to-talk voice-to-text",
   "main": "dist/main/main/index.js",
   "author": "Kenshiin13",
@@ -11,7 +11,8 @@
   "private": true,
   "scripts": {
     "dev": "npm run build && concurrently -k -n MAIN,SETTINGS,INDICATOR,AUDIO,ELECTRON \"tsc -p tsconfig.main.json --watch --preserveWatchOutput\" \"vite build --watch --config vite.settings.config.ts\" \"vite build --watch --config vite.indicator.config.ts\" \"vite build --watch --config vite.audio-capture.config.ts\" \"electron .\"",
-    "build": "npm run build:renderer && npm run build:main",
+    "clean": "node -e \"require('fs').rmSync('dist', { recursive: true, force: true })\"",
+    "build": "npm run clean && npm run build:renderer && npm run build:main",
     "build:renderer": "vite build --config vite.settings.config.ts && vite build --config vite.indicator.config.ts && vite build --config vite.audio-capture.config.ts",
     "build:main": "tsc --project tsconfig.main.json",
     "dist": "npm run build && electron-builder",
@@ -24,6 +25,7 @@
     "@mantine/core": "^7.17.0",
     "@mantine/hooks": "^7.17.0",
     "@nut-tree-fork/nut-js": "^4.2.6",
+    "@ricky0123/vad-web": "^0.0.30",
     "@tabler/icons-react": "^3.31.0",
     "electron-store": "^8.2.0",
     "koffi": "^2.16.0",

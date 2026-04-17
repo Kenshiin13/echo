@@ -21,6 +21,7 @@ export class ConfigStore {
       backend: this.store.get("backend"),
       autoPaste: this.store.get("autoPaste"),
       autostart: this.store.get("autostart"),
+      voiceActivation: this.store.get("voiceActivation"),
       indicatorHideDelayMs: this.store.get("indicatorHideDelayMs"),
     };
   }

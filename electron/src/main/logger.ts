@@ -15,7 +15,9 @@ function getStream(): fs.WriteStream {
 function write(level: string, ...args: unknown[]) {
   const line = `[${new Date().toISOString()}] [${level}] ${args.join(" ")}\n`;
   try { getStream().write(line); } catch {}
+  // Print everything to the terminal in dev, errors only in packaged builds
   if (level === "ERROR") process.stderr.write(line);
+  else if (!app.isPackaged) process.stdout.write(line);
 }
 
 export const log = {

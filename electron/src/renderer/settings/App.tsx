@@ -356,6 +356,13 @@ export function App() {
                 color="echo"
               />
               <Switch
+                label="Voice activation"
+                description="Always listen and transcribe automatically when speech is detected (disables push-to-talk hotkey; mic stays on)"
+                checked={config.voiceActivation}
+                onChange={(e) => patch("voiceActivation", e.currentTarget.checked)}
+                color="echo"
+              />
+              <Switch
                 label="Start at login"
                 description="Launch Echo automatically when you log in"
                 checked={config.autostart}

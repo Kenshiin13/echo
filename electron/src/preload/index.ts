@@ -39,6 +39,23 @@ const api = {
     ipcRenderer.send("audio:level", rms);
   },
 
+  // Voice-activation (Silero VAD) in the capture window
+  onVadEnable: (cb: () => void): void => {
+    ipcRenderer.on("audio:vad-enable", () => cb());
+  },
+
+  onVadDisable: (cb: () => void): void => {
+    ipcRenderer.on("audio:vad-disable", () => cb());
+  },
+
+  sendVadSpeechStart: (): void => {
+    ipcRenderer.send("audio:vad-speech-start");
+  },
+
+  sendVadMisfire: (): void => {
+    ipcRenderer.send("audio:vad-misfire");
+  },
+
   onAudioLevel: (cb: (rms: number) => void): (() => void) => {
     const handler = (_: Electron.IpcRendererEvent, rms: number) => cb(rms);
     ipcRenderer.on("indicator:level", handler);

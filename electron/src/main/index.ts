@@ -1,4 +1,5 @@
-import { app, dialog, Notification } from "electron";
+import { app, dialog, Notification, protocol } from "electron";
+import { pathToFileURL, fileURLToPath } from "url";
 import fs from "fs";
 import path from "path";
 import { ConfigStore } from "./config";
@@ -17,6 +18,33 @@ import { modelExists, downloadModel, binaryMatchesBackend, downloadBinary, resto
 
 async function main() {
   await app.whenReady();
+
+  // Inject COOP/COEP on every file:// response so the renderer is treated as
+  // crossOriginIsolated. That's what makes SharedArrayBuffer available, which
+  // the threaded WASM in onnxruntime-web 1.24 (bundled by @ricky0123/vad-web)
+  // requires. Using protocol.handle + bypassCustomProtocolHandlers avoids
+  // touching file-loading anywhere else in the app.
+  protocol.handle("file", async (request) => {
+    const filePath = fileURLToPath(request.url);
+    try {
+      const data = await fs.promises.readFile(filePath);
+      const headers = new Headers();
+      headers.set("Content-Type", mimeFor(filePath));
+      headers.set("Cross-Origin-Opener-Policy", "same-origin");
+      headers.set("Cross-Origin-Embedder-Policy", "require-corp");
+      headers.set("Cross-Origin-Resource-Policy", "cross-origin");
+      // Log VAD-related asset fetches for diagnostics
+      if (/ort-wasm|silero|vad\.worklet/.test(filePath)) {
+        log.info(`[protocol file] served ${path.basename(filePath)} (${data.length} B)`);
+      }
+      return new Response(new Uint8Array(data), { status: 200, headers });
+    } catch (err) {
+      log.error(`[protocol file] ${filePath} — ${err}`);
+      return new Response(null, { status: 404 });
+    }
+  });
+  // silence unused-import complaints — pathToFileURL is kept for future use
+  void pathToFileURL;
 
   const lock = new SingleInstance();
   if (!lock.acquire()) {
@@ -73,6 +101,7 @@ async function main() {
       });
     },
     () => windows.updateIndicator("idle"), // too-short recording → hide indicator
+    () => windows.updateIndicator("recording"), // VAD detected speech start
   );
 
   const hotkey = new HotkeyManager(
@@ -89,7 +118,7 @@ async function main() {
   );
 
   const tray = new TrayManager(config, windows);
-  setupIpc(config, sysInfo, windows, tray, hotkey, autostart);
+  setupIpc(config, sysInfo, windows, tray, hotkey, autostart, session);
 
   tray.create();
 
@@ -134,7 +163,16 @@ async function main() {
     log.error("Initial whisper-server start failed:", err);
   });
 
-  hotkey.start();
+  const boot = config.get();
+  log.info(`Boot config: voiceActivation=${boot.voiceActivation}, hotkey=${boot.hotkey}, model=${boot.modelSize}`);
+
+  if (boot.voiceActivation) {
+    log.info("Voice activation ON at boot — enabling Silero VAD");
+    session.enableVoiceActivation();
+  } else {
+    log.info("Voice activation OFF at boot — starting push-to-talk hotkey");
+    hotkey.start();
+  }
 
   // Show a one-time "moved to tray" notification on first ever launch
   const flagPath = path.join(app.getPath("userData"), ".launched");
@@ -158,11 +196,35 @@ async function main() {
   app.on("window-all-closed", () => { /* keep alive — tray app */ });
   app.on("before-quit", () => {
     hotkey.stop();
+    session.disableVoiceActivation();
     transcriber.destroy();
     lock.release();
   });
 
   log.info(`Echo started (v${app.getVersion()}, ${sysInfo.platform}, backend=${config.get().backend})`);
+}
+
+function mimeFor(filePath: string): string {
+  const ext = path.extname(filePath).toLowerCase();
+  switch (ext) {
+    case ".html": return "text/html; charset=utf-8";
+    case ".js":   return "text/javascript; charset=utf-8";
+    case ".mjs":  return "text/javascript; charset=utf-8";
+    case ".css":  return "text/css; charset=utf-8";
+    case ".json": return "application/json; charset=utf-8";
+    case ".wasm": return "application/wasm";
+    case ".svg":  return "image/svg+xml";
+    case ".png":  return "image/png";
+    case ".jpg":
+    case ".jpeg": return "image/jpeg";
+    case ".gif":  return "image/gif";
+    case ".ico":  return "image/x-icon";
+    case ".woff": return "font/woff";
+    case ".woff2":return "font/woff2";
+    case ".ttf":  return "font/ttf";
+    case ".onnx": return "application/octet-stream";
+    default:      return "application/octet-stream";
+  }
 }
 
 main().catch((err) => {

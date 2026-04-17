@@ -10,6 +10,7 @@ export interface Config {
   backend: Backend;
   autoPaste: boolean;
   autostart: boolean;
+  voiceActivation: boolean;
   indicatorHideDelayMs: number;
 }
 
@@ -21,6 +22,7 @@ export const DEFAULT_CONFIG: Config = {
   backend: "cpu",
   autoPaste: true,
   autostart: false,
+  voiceActivation: false,
   indicatorHideDelayMs: 1200,
 };
 
