@@ -1,7 +1,7 @@
 {
   "name": "echo",
-  "version": "1.2.1",
-  "description": "Local push-to-talk voice-to-text",
+  "version": "2.0.0",
+  "description": "Local push-to-talk voice-to-text for Windows",
   "main": "dist/main/main/index.js",
   "author": "Kenshiin13",
   "repository": {
@@ -15,13 +15,12 @@
     "build": "npm run clean && npm run build:renderer && npm run build:main",
     "build:renderer": "vite build --config vite.settings.config.ts && vite build --config vite.indicator.config.ts && vite build --config vite.audio-capture.config.ts",
     "build:main": "tsc --project tsconfig.main.json",
-    "dist": "npm run build && electron-builder",
+    "dist": "npm run build && electron-builder --win",
     "dist:win": "npm run build && electron-builder --win",
-    "dist:mac": "npm run build && electron-builder --mac",
-    "rebuild": "electron-builder install-app-deps"
+    "rebuild": "electron-builder install-app-deps",
+    "setup:whisper": "node scripts/setup-whisper.mjs"
   },
   "dependencies": {
-    "@huggingface/transformers": "^4.1.0",
     "@mantine/core": "^7.17.0",
     "@mantine/hooks": "^7.17.0",
     "@nut-tree-fork/nut-js": "^4.2.6",
@@ -29,12 +28,9 @@
     "@tabler/icons-react": "^3.31.0",
     "electron-store": "^8.2.0",
     "koffi": "^2.16.0",
-    "onnxruntime-node": "^1.24.3",
+    "nodejs-whisper": "^0.1.17",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
-  },
-  "optionalDependencies": {
-    "uiohook-napi": "^1.5.5"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

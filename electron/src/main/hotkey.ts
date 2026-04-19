@@ -1,7 +1,7 @@
 import { log } from "./logger";
 
 export class HotkeyManager {
-  private backend: HotkeyBackend | null = null;
+  private backend: WindowsHotkeyBackend | null = null;
 
   constructor(
     private hotkey: string,
@@ -10,13 +10,9 @@ export class HotkeyManager {
   ) {}
 
   start(): void {
-    if (process.platform === "win32") {
-      this.backend = new WindowsHotkeyBackend(this.hotkey, this.onPress, this.onRelease);
-    } else {
-      this.backend = new MacHotkeyBackend(this.hotkey, this.onPress, this.onRelease);
-    }
+    this.backend = new WindowsHotkeyBackend(this.hotkey, this.onPress, this.onRelease);
     this.backend.start();
-    log.info(`Hotkey started: ${this.hotkey} (${process.platform})`);
+    log.info(`Hotkey started: ${this.hotkey}`);
   }
 
   stop(): void {
@@ -31,15 +27,8 @@ export class HotkeyManager {
   }
 }
 
-interface HotkeyBackend {
-  start(): void;
-  stop(): void;
-}
-
-// ---------------------------------------------------------------------------
-// Windows backend — pure GetAsyncKeyState polling, no hooks.
+// Pure GetAsyncKeyState polling, no global hooks.
 // Works with all games and anti-cheat drivers regardless of window focus.
-// ---------------------------------------------------------------------------
 
 const WIN_VK: Record<string, number> = {
   ...Object.fromEntries(Array.from({ length: 12 }, (_, i) => [`f${i + 1}`, 0x70 + i])),
@@ -62,14 +51,14 @@ function parseVkCombo(name: string): number[] {
     } else if (part.length === 1) {
       vks.push(part.toUpperCase().charCodeAt(0));
     } else {
-      throw new Error(`Unsupported key for Windows backend: ${part}`);
+      throw new Error(`Unsupported key: ${part}`);
     }
   }
   if (!vks.length) throw new Error(`Empty hotkey: ${name}`);
   return vks;
 }
 
-class WindowsHotkeyBackend implements HotkeyBackend {
+class WindowsHotkeyBackend {
   private vks: number[];
   private timer: ReturnType<typeof setInterval> | null = null;
   private active = false;
@@ -114,7 +103,6 @@ class WindowsHotkeyBackend implements HotkeyBackend {
 }
 
 function loadUser32() {
-  // koffi is the FFI library — much better Electron ABI compatibility than ffi-napi
   try {
     const koffi = require("koffi") as typeof import("koffi");
     const lib = koffi.load("user32.dll");
@@ -124,82 +112,4 @@ function loadUser32() {
     log.error("Failed to load user32.dll via koffi:", err);
     return null;
   }
-}
-
-// ---------------------------------------------------------------------------
-// macOS / Linux backend — uiohook-napi
-// ---------------------------------------------------------------------------
-
-class MacHotkeyBackend implements HotkeyBackend {
-  private targetKeys: Set<string>;
-  private heldKeys = new Set<string>();
-  private active = false;
-  private uiohook: typeof import("uiohook-napi") | null = null;
-
-  constructor(
-    hotkey: string,
-    private onPress: () => void,
-    private onRelease: () => void,
-  ) {
-    this.targetKeys = new Set(
-      hotkey.toLowerCase().split("+").map((p) => p.trim()).filter(Boolean),
-    );
-  }
-
-  start(): void {
-    let hook: typeof import("uiohook-napi");
-    try {
-      hook = require("uiohook-napi");
-      this.uiohook = hook;
-    } catch (err) {
-      log.error("Failed to load uiohook-napi:", err);
-      return;
-    }
-
-    hook.uIOhook.on("keydown", (e) => {
-      const key = keyCodeToName(e.keycode);
-      if (!key) return;
-      this.heldKeys.add(key);
-      if (this.allDown() && !this.active) {
-        this.active = true;
-        try { this.onPress(); } catch (err2) { log.error("hotkey press error:", err2); }
-      }
-    });
-
-    hook.uIOhook.on("keyup", (e) => {
-      const key = keyCodeToName(e.keycode);
-      if (!key) return;
-      const wasHeld = this.heldKeys.has(key);
-      this.heldKeys.delete(key);
-      if (this.active && wasHeld && !this.allDown()) {
-        this.active = false;
-        try { this.onRelease(); } catch (err2) { log.error("hotkey release error:", err2); }
-      }
-    });
-
-    hook.uIOhook.start();
-  }
-
-  stop(): void {
-    try { this.uiohook?.uIOhook.stop(); } catch {}
-    this.active = false;
-    this.heldKeys.clear();
-  }
-
-  private allDown(): boolean {
-    return [...this.targetKeys].every((k) => this.heldKeys.has(k));
-  }
-}
-
-function keyCodeToName(code: number): string | null {
-  // uiohook-napi key codes (subset relevant to hotkeys)
-  const MAP: Record<number, string> = {
-    1: "esc", 59: "f1", 60: "f2", 61: "f3", 62: "f4", 63: "f5",
-    64: "f6", 65: "f7", 66: "f8", 67: "f9", 68: "f10", 87: "f11", 88: "f12",
-    29: "ctrl", 56: "alt", 42: "shift", 54: "shift",
-    3675: "ctrl", 3676: "alt",  // right ctrl/alt
-    3640: "ctrl",               // right ctrl alternate code
-    57: "space",
-  };
-  return MAP[code] ?? null;
 }

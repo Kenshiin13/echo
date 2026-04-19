@@ -1,21 +1,18 @@
 import path from "path";
-import { app } from "electron";
+import fs from "fs";
 import { ConfigStore } from "./config";
-import { SystemInfo, ModelSize } from "../shared/types";
+import { SystemInfo } from "../shared/types";
 import { log } from "./logger";
+import { getModelPath, getWhisperCppDir } from "./model-downloader";
+import { WhisperServer } from "./whisper-server";
 import { translateViaDeepL } from "./deepl";
 
-// Transformers.js is ESM; load lazily via dynamic import from this CJS module.
-type ASRPipeline = (audio: Float32Array, opts?: Record<string, unknown>) => Promise<{ text: string }>;
-
 type DoneCallback = (text: string) => void;
-type ProgressCallback = (percent: number) => void;
 
 export class Transcriber {
-  private asr: ASRPipeline | null = null;
-  private asrLoadPromise: Promise<ASRPipeline> | null = null;
+  private server: WhisperServer | null = null;
   private busy = false;
-  private onProgress: ProgressCallback | null = null;
+  private startError: Error | null = null;
 
   constructor(
     private config: ConfigStore,
@@ -23,124 +20,123 @@ export class Transcriber {
     private onDone: DoneCallback,
   ) {}
 
-  setProgressCallback(cb: ProgressCallback | null): void {
-    this.onProgress = cb;
-  }
-
+  // Called by the app after the model/binary are known to be present.
   async ensureStarted(): Promise<void> {
-    if (this.asr) return;
-    if (!this.asrLoadPromise) this.asrLoadPromise = this.loadPipeline();
-    this.asr = await this.asrLoadPromise;
-  }
+    if (this.server) return;
 
-  private async loadPipeline(): Promise<ASRPipeline> {
-    // @huggingface/transformers ships a CJS bundle at
-    // dist/transformers.node.cjs which package.json's `exports.node.require`
-    // points at, so a direct require() works from this CommonJS main bundle.
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { pipeline, env } =
-      require("@huggingface/transformers") as typeof import("@huggingface/transformers");
+    const binary = resolveBinary(getWhisperCppDir());
+    const modelPath = this.resolveModelFile();
 
-    // Keep model downloads inside the app's user-data dir so Settings' model
-    // manager can list/delete them, and they survive uninstalls the same way
-    // config does.
-    env.cacheDir = path.join(app.getPath("userData"), "whisper-models");
-    env.allowLocalModels = false;
-
-    const modelId = modelIdFor(this.config.get().modelSize);
-    log.info(`Loading ASR pipeline: ${modelId} (cache: ${env.cacheDir})`);
-
-    const pipe = await pipeline("automatic-speech-recognition", modelId, {
-      device: "cpu",
-      dtype: "fp32",
-      progress_callback: (e: unknown) => {
-        // Transformers.js emits { status: 'progress', progress: 0..100, ... }
-        // during model download. Forward to the indicator.
-        const ev = e as { status?: string; progress?: number };
-        if (ev.status === "progress" && typeof ev.progress === "number" && this.onProgress) {
-          this.onProgress(Math.floor(ev.progress));
-        }
-      },
+    this.server = new WhisperServer({
+      binary,
+      modelPath,
+      language: this.config.get().language,
     });
 
-    log.info("ASR pipeline ready");
-    return pipe as unknown as ASRPipeline;
+    try {
+      await this.server.start();
+    } catch (err) {
+      this.startError = err as Error;
+      log.error("whisper-server failed to start:", err);
+      throw err;
+    }
   }
 
   async transcribe(pcmBuffer: Buffer): Promise<void> {
     if (this.busy) throw new Error("Transcriber busy");
-    if (!this.asr) await this.ensureStarted();
+    if (!this.server) {
+      await this.ensureStarted();
+    }
+    if (this.startError) throw this.startError;
 
     this.busy = true;
     try {
-      const samples = int16BufferToFloat32(pcmBuffer);
-      const cfg = this.config.get();
+      const wav = wrapPcmAsWav(pcmBuffer);
+      const { text, language } = await this.server!.transcribe(wav, this.config.get().language);
 
-      const opts: Record<string, unknown> = {
-        chunk_length_s: 30,
-        stride_length_s: 5,
-      };
-      if (cfg.language) opts.language = cfg.language;
-
-      const result = await this.asr!(samples, opts);
-      const text = (result?.text ?? "").trim();
-      const final = await this.maybeTranslate(text, cfg.language);
+      const final = await this.maybeTranslate(text, language);
       this.onDone(final);
     } finally {
       this.busy = false;
     }
   }
 
-  private async maybeTranslate(text: string, sourceLang: string | null): Promise<string> {
+  private async maybeTranslate(text: string, detectedLang: string | null): Promise<string> {
     if (!text.trim()) return text;
 
     const cfg = this.config.get();
     const target = cfg.translateTo;
-    if (!target) return text;
-    if (!cfg.deeplApiKey.trim()) return text;
-
-    // Transformers.js's ASR pipeline doesn't expose the detected source
-    // language in its output, so if the user has pinned their language in
-    // Settings and it matches the translation target we skip the DeepL call.
-    // Otherwise we always call DeepL and let it auto-detect (it returns the
-    // text unchanged when source == target, which is correct but costs some
-    // free-tier characters).
-    if (sourceLang && sourceLang.toLowerCase() === target.toLowerCase()) {
-      log.info(`Translation skipped — source == target (${target})`);
+    if (!target) return text;                         // translation disabled
+    if (!cfg.deeplApiKey.trim()) return text;         // no key configured — skip silently
+    if (detectedLang && detectedLang.toLowerCase() === target.toLowerCase()) {
+      log.info(`Translation skipped — already in target (${target})`);
       return text;
     }
 
-    log.info(`Translating via DeepL: ${sourceLang ?? "auto"} → ${target}`);
+    log.info(`Translating via DeepL: ${detectedLang ?? "?"} → ${target}`);
     return translateViaDeepL(text, target, cfg.deeplApiKey);
   }
 
-  async destroy(): Promise<void> {
-    if (this.asr) {
-      // Transformers.js pipelines implement Disposable; dispose frees model memory.
-      const disposable = this.asr as unknown as { dispose?: () => Promise<void> };
-      try { await disposable.dispose?.(); } catch { /* non-fatal */ }
+  destroy(): void {
+    this.server?.stop();
+    this.server = null;
+  }
+
+  private resolveModelFile(): string {
+    const wanted = getModelPath(this.config.get().modelSize);
+    if (fs.existsSync(wanted)) return wanted;
+
+    const modelsDir = path.join(getWhisperCppDir(), "models");
+    const priority = ["ggml-base.bin", "ggml-small.bin", "ggml-tiny.bin",
+      "ggml-medium.bin", "ggml-large-v3-turbo.bin"];
+    for (const candidate of priority) {
+      const p = path.join(modelsDir, candidate);
+      if (fs.existsSync(p)) return p;
     }
-    this.asr = null;
-    this.asrLoadPromise = null;
+    if (fs.existsSync(modelsDir)) {
+      const any = fs.readdirSync(modelsDir).find(f => f.startsWith("ggml-") && f.endsWith(".bin"));
+      if (any) return path.join(modelsDir, any);
+    }
+    throw new Error(`No Whisper model found in:\n  ${modelsDir}\nRun: npm run setup:whisper`);
   }
 }
 
-function modelIdFor(size: ModelSize): string {
-  // Xenova hosts ONNX conversions of the standard Whisper checkpoints.
-  // Large-v3-turbo lives under onnx-community.
-  switch (size) {
-    case "tiny":           return "Xenova/whisper-tiny";
-    case "base":           return "Xenova/whisper-base";
-    case "small":          return "Xenova/whisper-small";
-    case "medium":         return "Xenova/whisper-medium";
-    case "large-v3-turbo": return "onnx-community/whisper-large-v3-turbo";
-    default:               return "Xenova/whisper-base";
+function resolveBinary(dir: string): string {
+  const exe = process.platform === "win32" ? ".exe" : "";
+  const candidates = [
+    path.join(dir, `whisper-server${exe}`),
+    path.join(dir, "bin", `whisper-server${exe}`),
+  ];
+  const found = candidates.find(p => fs.existsSync(p));
+  if (!found) {
+    throw new Error(`whisper-server binary not found in ${dir}. Run: npm run setup:whisper`);
   }
+  return found;
 }
 
-function int16BufferToFloat32(pcm: Buffer): Float32Array {
-  const int16 = new Int16Array(pcm.buffer, pcm.byteOffset, pcm.byteLength / 2);
-  const f32 = new Float32Array(int16.length);
-  for (let i = 0; i < int16.length; i++) f32[i] = int16[i] / 32768;
-  return f32;
+function wrapPcmAsWav(pcm: Buffer): Buffer {
+  const sampleRate = 16000;
+  const numChannels = 1;
+  const bitsPerSample = 16;
+  const byteRate = (sampleRate * numChannels * bitsPerSample) / 8;
+  const blockAlign = (numChannels * bitsPerSample) / 8;
+  const dataSize = pcm.length;
+  const headerSize = 44;
+
+  const buf = Buffer.alloc(headerSize + dataSize);
+  buf.write("RIFF", 0);
+  buf.writeUInt32LE(36 + dataSize, 4);
+  buf.write("WAVE", 8);
+  buf.write("fmt ", 12);
+  buf.writeUInt32LE(16, 16);
+  buf.writeUInt16LE(1, 20);
+  buf.writeUInt16LE(numChannels, 22);
+  buf.writeUInt32LE(sampleRate, 24);
+  buf.writeUInt32LE(byteRate, 28);
+  buf.writeUInt16LE(blockAlign, 32);
+  buf.writeUInt16LE(bitsPerSample, 34);
+  buf.write("data", 36);
+  buf.writeUInt32LE(dataSize, 40);
+  pcm.copy(buf, headerSize);
+  return buf;
 }

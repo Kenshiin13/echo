@@ -304,7 +304,6 @@ export function App() {
                 data={[
                   { value: "cpu",  label: "CPU — int8, works everywhere" },
                   { value: "cuda", label: "CUDA — NVIDIA GPU", disabled: !sysInfo.hasNvidiaGpu },
-                  { value: "mlx",  label: "MLX — Apple Silicon", disabled: !sysInfo.isAppleSilicon },
                 ]}
                 leftSection={<IconCpu size={14} />}
               />
@@ -498,11 +497,6 @@ export function App() {
                 {sysInfo.hasNvidiaGpu && (
                   <Badge variant="light" color="echo" size="sm" radius="sm">
                     NVIDIA GPU
-                  </Badge>
-                )}
-                {sysInfo.isAppleSilicon && (
-                  <Badge variant="light" color="echo" size="sm" radius="sm">
-                    Apple Silicon
                   </Badge>
                 )}
                 <Badge variant="outline" color="dark.3" size="sm" radius="sm">
