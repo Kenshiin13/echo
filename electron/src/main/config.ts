@@ -24,6 +24,7 @@ export class ConfigStore {
       voiceActivation: this.store.get("voiceActivation"),
       translateTo: this.store.get("translateTo"),
       deeplApiKey: this.store.get("deeplApiKey"),
+      prompt: this.store.get("prompt"),
       indicatorHideDelayMs: this.store.get("indicatorHideDelayMs"),
     };
   }

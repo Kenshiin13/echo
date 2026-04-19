@@ -15,6 +15,9 @@ export interface Config {
   translateTo: string | null;
   /** DeepL API key. Keys ending in ":fx" use the free endpoint; others use pro. */
   deeplApiKey: string;
+  /** Optional initial prompt passed to Whisper as context before each
+   *  transcription. Biases spelling, style, punctuation, custom vocabulary. */
+  prompt: string;
   indicatorHideDelayMs: number;
 }
 
@@ -29,6 +32,7 @@ export const DEFAULT_CONFIG: Config = {
   voiceActivation: false,
   translateTo: null,
   deeplApiKey: "",
+  prompt: "",
   indicatorHideDelayMs: 1200,
 };
 

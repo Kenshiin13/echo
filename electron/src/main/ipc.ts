@@ -5,6 +5,7 @@ import { TrayManager } from "./tray";
 import { HotkeyManager } from "./hotkey";
 import { AutostartManager } from "./autostart";
 import { RecordingSession } from "./recorder";
+import { Transcriber } from "./transcriber";
 import { SystemInfo } from "../shared/types";
 import { log } from "./logger";
 import { listDownloadedModels, deleteModel } from "./model-downloader";
@@ -17,6 +18,7 @@ export function setupIpc(
   hotkey: HotkeyManager,
   autostart: AutostartManager,
   session: RecordingSession,
+  transcriber: Transcriber,
 ): void {
   ipcMain.handle("settings:get-config", () => config.get());
   ipcMain.handle("settings:get-system-info", () => sysInfo);
@@ -48,6 +50,16 @@ export function setupIpc(
           hotkey.start();
           log.info("Voice activation disabled (live swap)");
         }
+      }
+
+      // Model size changed — respawn whisper-server with the new model
+      // rather than requiring the user to restart the whole app. Language
+      // and prompt are per-request params and pick up immediately without
+      // any reload.
+      if (prev.modelSize !== newConfig.modelSize) {
+        transcriber.reload().catch((err) => {
+          log.error("Failed to reload whisper-server after model change:", err);
+        });
       }
 
       log.info("Config saved:", JSON.stringify(newConfig));

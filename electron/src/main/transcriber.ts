@@ -52,13 +52,30 @@ export class Transcriber {
     this.busy = true;
     try {
       const wav = wrapPcmAsWav(pcmBuffer);
-      const { text, language } = await this.server!.transcribe(wav, this.config.get().language);
+      const cfg = this.config.get();
+      const { text, language } = await this.server!.transcribe(wav, cfg.language, cfg.prompt);
 
       const final = await this.maybeTranslate(text, language);
       this.onDone(final);
     } finally {
       this.busy = false;
     }
+  }
+
+  /**
+   * Stop the current whisper-server and start a fresh one with the latest
+   * config (model path + default language). Called when the user changes the
+   * model size in Settings — no app restart needed.
+   */
+  async reload(): Promise<void> {
+    // If we're mid-transcription, wait for it to finish so we don't yank the
+    // server out from under an in-flight HTTP request.
+    while (this.busy) await new Promise((r) => setTimeout(r, 50));
+    log.info("Reloading whisper-server with updated config");
+    this.server?.stop();
+    this.server = null;
+    this.startError = null;
+    await this.ensureStarted();
   }
 
   private async maybeTranslate(text: string, detectedLang: string | null): Promise<string> {

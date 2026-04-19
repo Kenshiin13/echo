@@ -118,7 +118,7 @@ async function main() {
   );
 
   const tray = new TrayManager(config, windows);
-  setupIpc(config, sysInfo, windows, tray, hotkey, autostart, session);
+  setupIpc(config, sysInfo, windows, tray, hotkey, autostart, session, transcriber);
 
   tray.create();
 

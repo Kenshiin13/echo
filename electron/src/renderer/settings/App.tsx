@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import {
   Stack, Group, Text, Button, Select, Switch,
   Badge, Loader, Alert, Box, ScrollArea, ActionIcon,
-  PasswordInput, HoverCard, Anchor, Modal,
+  PasswordInput, HoverCard, Anchor, Modal, Textarea,
 } from "@mantine/core";
 import {
   IconAlertCircle, IconCheck, IconRefresh,
@@ -189,7 +189,10 @@ export function App() {
 
   function patch<K extends keyof Config>(key: K, val: Config[K]) {
     setConfig((c) => (c ? { ...c, [key]: val } : c));
-    const restartKeys: (keyof Config)[] = ["hotkey", "exitKey", "modelSize", "language", "backend"];
+    // Things that actually require an app restart. modelSize restarts just
+    // whisper-server behind the scenes (see ipc.ts save handler), and
+    // language+prompt are per-request — no restart needed for any of them.
+    const restartKeys: (keyof Config)[] = ["exitKey", "backend"];
     if (restartKeys.includes(key)) setNeedsRestart(true);
     setSaved(false);
   }
@@ -306,6 +309,38 @@ export function App() {
                   { value: "cuda", label: "CUDA — NVIDIA GPU", disabled: !sysInfo.hasNvidiaGpu },
                 ]}
                 leftSection={<IconCpu size={14} />}
+              />
+              <Textarea
+                label={
+                  <Group gap={4} wrap="nowrap">
+                    <Text size="sm" fw={500}>Initial prompt (optional)</Text>
+                    <HoverCard width={320} shadow="md" withArrow openDelay={100} closeDelay={200}>
+                      <HoverCard.Target>
+                        <IconInfoCircle size={13} style={{ cursor: "help", color: "var(--muted)" }} />
+                      </HoverCard.Target>
+                      <HoverCard.Dropdown>
+                        <Text size="xs">
+                          Whisper sees this text as the end of an imagined previous sentence, which
+                          biases spelling, punctuation, and style. Useful for forcing custom jargon,
+                          product names, or a particular voice. Limit: ~224 tokens.
+                        </Text>
+                        <Text size="xs" mt={6} c="dimmed">
+                          Examples:
+                          <br />• <i>"Use proper punctuation and capitalization."</i>
+                          <br />• <i>"Kubernetes, Postgres, TanStack, tRPC."</i>
+                          <br />• <i>"no punctuation, all lowercase, casual"</i>
+                        </Text>
+                      </HoverCard.Dropdown>
+                    </HoverCard>
+                  </Group>
+                }
+                description="Applied on every transcription. Changes take effect immediately — no restart."
+                placeholder="e.g. Use proper punctuation and capitalization."
+                value={config.prompt}
+                onChange={(e) => patch("prompt", e.currentTarget.value)}
+                autosize
+                minRows={2}
+                maxRows={5}
               />
             </Stack>
           </Card>

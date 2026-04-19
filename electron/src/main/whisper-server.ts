@@ -76,7 +76,11 @@ export class WhisperServer {
     throw new Error("whisper-server failed to become ready within 60s");
   }
 
-  async transcribe(wavBuffer: Buffer, language: string | null): Promise<TranscribeResult> {
+  async transcribe(
+    wavBuffer: Buffer,
+    language: string | null,
+    prompt: string = "",
+  ): Promise<TranscribeResult> {
     if (!this.proc) throw new Error("whisper-server not running");
 
     const form = new FormData();
@@ -87,6 +91,7 @@ export class WhisperServer {
     form.append("response_format", "verbose_json");
     form.append("temperature", "0.0");
     if (language) form.append("language", language);
+    if (prompt.trim()) form.append("prompt", prompt.trim());
 
     const res = await fetch(`http://127.0.0.1:${this.port}/inference`, {
       method: "POST",
