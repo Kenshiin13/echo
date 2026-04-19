@@ -13,6 +13,7 @@ import { AutostartManager } from "./autostart";
 import { SingleInstance } from "./single-instance";
 import { setupIpc } from "./ipc";
 import { UpdaterManager } from "./updater";
+import { HistoryStore } from "./history";
 import { getSystemInfo } from "./system-info";
 import { log } from "./logger";
 import { modelExists, downloadModel, binaryMatchesBackend, downloadBinary, restorePreservedModels } from "./model-downloader";
@@ -70,6 +71,7 @@ async function main() {
   const windows = new WindowManager();
   const paste = new PasteManager();
   const autostart = new AutostartManager();
+  const history = new HistoryStore();
 
   const transcriber = new Transcriber(config, sysInfo, (text) => {
     log.info(`Transcribed: "${text.slice(0, 80)}${text.length > 80 ? "…" : ""}" (${text.length} chars)`);
@@ -87,6 +89,11 @@ async function main() {
     } else {
       const { clipboard } = require("electron");
       clipboard.writeText(text);
+    }
+
+    if (config.get().historyEnabled) {
+      history.add(text);
+      windows.notifyHistoryUpdated();
     }
 
     setTimeout(() => windows.updateIndicator("idle"), config.get().indicatorHideDelayMs);
@@ -121,7 +128,7 @@ async function main() {
 
   const tray = new TrayManager(config, windows);
   const updater = new UpdaterManager(windows);
-  setupIpc(config, sysInfo, windows, tray, hotkey, autostart, session, transcriber, updater);
+  setupIpc(config, sysInfo, windows, tray, hotkey, autostart, session, transcriber, updater, history);
   updater.scheduleBootCheck();
 
   tray.create();

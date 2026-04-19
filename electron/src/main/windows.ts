@@ -157,6 +157,10 @@ export class WindowManager {
     this.settingsWindow?.webContents.send("updates:state", state);
   }
 
+  notifyHistoryUpdated(): void {
+    this.settingsWindow?.webContents.send("history:updated");
+  }
+
   updateIndicator(state: IndicatorState): void {
     const win = this.ensureIndicator();
 

@@ -4,16 +4,17 @@ import {
   ScrollArea, Badge,
 } from "@mantine/core";
 import {
-  IconSettings, IconBrain, IconWand,
+  IconSettings, IconBrain, IconWand, IconHistory,
   IconInfoCircle, IconCheck, IconAlertCircle, IconRefresh,
 } from "@tabler/icons-react";
 import type { Config, SystemInfo } from "@shared/types";
 import { GeneralSection } from "./sections/GeneralSection";
 import { ModelSection } from "./sections/ModelSection";
 import { PostProcessingSection } from "./sections/PostProcessingSection";
+import { HistorySection } from "./sections/HistorySection";
 import { AboutSection } from "./sections/AboutSection";
 
-type SectionId = "general" | "model" | "post-processing" | "about";
+type SectionId = "general" | "model" | "post-processing" | "history" | "about";
 
 interface NavItem {
   id: SectionId;
@@ -25,6 +26,7 @@ const NAV: NavItem[] = [
   { id: "general",         label: "General",         icon: IconSettings },
   { id: "model",           label: "Model",           icon: IconBrain },
   { id: "post-processing", label: "Post-processing", icon: IconWand },
+  { id: "history",         label: "History",         icon: IconHistory },
   { id: "about",           label: "About",           icon: IconInfoCircle },
 ];
 
@@ -199,6 +201,9 @@ export function App() {
             )}
             {active === "post-processing" && (
               <PostProcessingSection config={config} patch={patch} />
+            )}
+            {active === "history" && (
+              <HistorySection config={config} patch={patch} />
             )}
             {active === "about" && (
               <AboutSection sysInfo={sysInfo} />

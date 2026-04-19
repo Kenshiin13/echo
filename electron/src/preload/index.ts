@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from "electron";
-import type { Config, SystemInfo, IndicatorState, UpdateState } from "../shared/types";
+import type { Config, SystemInfo, IndicatorState, UpdateState, HistoryEntry } from "../shared/types";
 
 const api = {
   // Settings window
@@ -86,6 +86,16 @@ const api = {
     const handler = (_: Electron.IpcRendererEvent, state: UpdateState) => cb(state);
     ipcRenderer.on("updates:state", handler);
     return () => ipcRenderer.removeListener("updates:state", handler);
+  },
+
+  // Transcription history
+  listHistory: (): Promise<HistoryEntry[]> => ipcRenderer.invoke("history:list"),
+  deleteHistoryEntry: (id: string): Promise<void> => ipcRenderer.invoke("history:delete", id),
+  clearHistory: (): Promise<void> => ipcRenderer.invoke("history:clear"),
+  onHistoryUpdated: (cb: () => void): (() => void) => {
+    const handler = () => cb();
+    ipcRenderer.on("history:updated", handler);
+    return () => ipcRenderer.removeListener("history:updated", handler);
   },
 };
 

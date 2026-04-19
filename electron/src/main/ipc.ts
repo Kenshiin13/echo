@@ -10,6 +10,7 @@ import { SystemInfo } from "../shared/types";
 import { log } from "./logger";
 import { listDownloadedModels, deleteModel, modelExists, downloadModel } from "./model-downloader";
 import { UpdaterManager } from "./updater";
+import { HistoryStore } from "./history";
 
 export function setupIpc(
   config: ConfigStore,
@@ -21,6 +22,7 @@ export function setupIpc(
   session: RecordingSession,
   transcriber: Transcriber,
   updater: UpdaterManager,
+  history: HistoryStore,
 ): void {
   ipcMain.handle("settings:get-config", () => config.get());
   ipcMain.handle("settings:get-system-info", () => sysInfo);
@@ -128,4 +130,8 @@ export function setupIpc(
   ipcMain.handle("updates:get-state", () => updater.getState());
   ipcMain.handle("updates:check", () => updater.check());
   ipcMain.handle("updates:install", () => updater.quitAndInstall());
+
+  ipcMain.handle("history:list", () => history.list());
+  ipcMain.handle("history:delete", (_e, id: string) => history.remove(id));
+  ipcMain.handle("history:clear", () => history.clear());
 }

@@ -28,6 +28,7 @@ export class ConfigStore {
       replacements: this.store.get("replacements"),
       indicatorHideDelayMs: this.store.get("indicatorHideDelayMs"),
       audioInputDeviceId: this.store.get("audioInputDeviceId"),
+      historyEnabled: this.store.get("historyEnabled"),
     };
   }
 

@@ -27,6 +27,14 @@ export interface Config {
   indicatorHideDelayMs: number;
   /** MediaDeviceInfo.deviceId of the preferred microphone. null = OS default. */
   audioInputDeviceId: string | null;
+  /** Keep a rolling log of transcripts for re-copy. Disable to stop saving. */
+  historyEnabled: boolean;
+}
+
+export interface HistoryEntry {
+  id: string;
+  text: string;
+  timestamp: number;
 }
 
 export interface Replacement {
@@ -49,6 +57,7 @@ export const DEFAULT_CONFIG: Config = {
   replacements: [],
   indicatorHideDelayMs: 1200,
   audioInputDeviceId: null,
+  historyEnabled: true,
 };
 
 export interface SystemInfo {
