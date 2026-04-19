@@ -52,6 +52,15 @@ export function setupIpc(
         }
       }
 
+      // Mic changed — if VAD is running, restart it so getUserMedia picks up
+      // the new device. Push-to-talk reads the device fresh on each key-down
+      // so it needs no action.
+      if (prev.audioInputDeviceId !== newConfig.audioInputDeviceId && newConfig.voiceActivation) {
+        log.info(`Mic changed while VAD running — restarting capture (${newConfig.audioInputDeviceId ?? "default"})`);
+        session.disableVoiceActivation();
+        session.enableVoiceActivation();
+      }
+
       // Model size changed — download it if missing, then respawn
       // whisper-server. No full-app restart needed. Language and prompt
       // are per-request params and pick up on the next transcription.

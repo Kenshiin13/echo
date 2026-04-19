@@ -1,4 +1,4 @@
-import { HoverCard, Text } from "@mantine/core";
+import { HoverCard } from "@mantine/core";
 import { IconInfoCircle } from "@tabler/icons-react";
 import type { ReactNode } from "react";
 
@@ -17,9 +17,9 @@ export function InfoHint({ children, width = 300 }: Props) {
         />
       </HoverCard.Target>
       <HoverCard.Dropdown>
-        {typeof children === "string"
-          ? <Text size="xs">{children}</Text>
-          : children}
+        <div style={{ fontSize: "var(--mantine-font-size-xs)", lineHeight: 1.5 }}>
+          {children}
+        </div>
       </HoverCard.Dropdown>
     </HoverCard>
   );

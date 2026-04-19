@@ -92,6 +92,7 @@ async function main() {
   });
 
   const session = new RecordingSession(
+    config,
     (pcmData) => {
       windows.updateIndicator("transcribing");
       transcriber.transcribe(pcmData).catch((err) => {

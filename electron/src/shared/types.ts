@@ -25,6 +25,8 @@ export interface Config {
    *  applied in order. Use `\n` in the replacement for a newline. */
   replacements: Replacement[];
   indicatorHideDelayMs: number;
+  /** MediaDeviceInfo.deviceId of the preferred microphone. null = OS default. */
+  audioInputDeviceId: string | null;
 }
 
 export interface Replacement {
@@ -46,6 +48,7 @@ export const DEFAULT_CONFIG: Config = {
   prompt: "",
   replacements: [],
   indicatorHideDelayMs: 1200,
+  audioInputDeviceId: null,
 };
 
 export interface SystemInfo {

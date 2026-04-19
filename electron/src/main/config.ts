@@ -27,6 +27,7 @@ export class ConfigStore {
       prompt: this.store.get("prompt"),
       replacements: this.store.get("replacements"),
       indicatorHideDelayMs: this.store.get("indicatorHideDelayMs"),
+      audioInputDeviceId: this.store.get("audioInputDeviceId"),
     };
   }
 

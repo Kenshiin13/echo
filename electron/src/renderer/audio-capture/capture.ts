@@ -34,16 +34,14 @@ class PCMCollector extends AudioWorkletProcessor {
 registerProcessor('pcm-collector', PCMCollector);
 `;
 
-async function ptStart() {
+async function ptStart(deviceId: string | null) {
   ptChunks = [];
-  ptMediaStream = await navigator.mediaDevices.getUserMedia({
-    audio: {
-      channelCount: 1,
-      sampleRate: TARGET_SAMPLE_RATE,
-      echoCancellation: false,
-      noiseSuppression: false,
-      autoGainControl: false,
-    },
+  ptMediaStream = await openMicStream(deviceId, {
+    channelCount: 1,
+    sampleRate: TARGET_SAMPLE_RATE,
+    echoCancellation: false,
+    noiseSuppression: false,
+    autoGainControl: false,
   });
   ptAudioCtx = new AudioContext({ sampleRate: TARGET_SAMPLE_RATE });
   const blob = new Blob([workletCode], { type: "application/javascript" });
@@ -84,7 +82,27 @@ let micVad: MicVAD | null = null;
 let vadFrameCount = 0;
 let vadMaxSpeechProb = 0;
 
-async function vadStart() {
+async function openMicStream(
+  deviceId: string | null,
+  base: MediaTrackConstraints,
+): Promise<MediaStream> {
+  const constraints: MediaTrackConstraints = deviceId
+    ? { ...base, deviceId: { exact: deviceId } }
+    : base;
+  try {
+    return await navigator.mediaDevices.getUserMedia({ audio: constraints });
+  } catch (err) {
+    // If the configured device is unplugged or no longer valid, fall back to
+    // the OS default so transcription keeps working rather than dying silently.
+    if (deviceId) {
+      console.warn(`[audio-capture] device ${deviceId} unavailable (${err}); falling back to default`);
+      return await navigator.mediaDevices.getUserMedia({ audio: base });
+    }
+    throw err;
+  }
+}
+
+async function vadStart(deviceId: string | null) {
   if (micVad) {
     console.info("[audio-capture] VAD already running — ignoring enable");
     return;
@@ -104,6 +122,7 @@ async function vadStart() {
       model: "v5",
       baseAssetPath: "./",
       onnxWASMBasePath: "./",
+      additionalAudioConstraints: deviceId ? { deviceId: { exact: deviceId } } : undefined,
       // Force single-threaded ORT. vad-web 0.0.30 bundles onnxruntime-web 1.24
       // which only ships threaded WASM; that spawns a Web Worker with
       // SharedArrayBuffer, which in Electron's file:// context hangs indefinitely
@@ -169,9 +188,9 @@ function float32ToInt16Bytes(f32: Float32Array): Uint8Array {
 
 // ── IPC wiring ───────────────────────────────────────────────────────────────
 
-window.echo.onAudioStart(async () => {
+window.echo.onAudioStart(async (deviceId) => {
   try {
-    await ptStart();
+    await ptStart(deviceId);
   } catch (err) {
     console.error("[audio-capture] push-to-talk start failed:", err);
   }
@@ -189,10 +208,10 @@ window.echo.onAudioStop(() => {
 
 console.info("[audio-capture] renderer script loaded, IPC handlers registered");
 
-window.echo.onVadEnable(async () => {
-  console.info("[audio-capture] onVadEnable fired");
+window.echo.onVadEnable(async (deviceId) => {
+  console.info(`[audio-capture] onVadEnable fired (device=${deviceId ?? "default"})`);
   try {
-    await vadStart();
+    await vadStart(deviceId);
   } catch (err) {
     console.error("[audio-capture] VAD start failed:", err);
   }

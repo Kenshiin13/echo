@@ -1,6 +1,7 @@
 import { BrowserWindow, ipcMain, app } from "electron";
 import path from "path";
 import { log } from "./logger";
+import { ConfigStore } from "./config";
 
 type DoneCallback = (pcmBuffer: Buffer) => void;
 type SkipCallback = () => void;
@@ -50,13 +51,13 @@ function ensureCaptureWindow(): BrowserWindow {
   return captureWindow;
 }
 
-function sendWhenReady(win: BrowserWindow, channel: string): void {
+function sendWhenReady(win: BrowserWindow, channel: string, ...args: unknown[]): void {
   if (win.webContents.isLoading()) {
     win.webContents.once("did-finish-load", () => {
-      win.webContents.send(channel);
+      win.webContents.send(channel, ...args);
     });
   } else {
-    win.webContents.send(channel);
+    win.webContents.send(channel, ...args);
   }
 }
 
@@ -67,6 +68,7 @@ export class RecordingSession {
   private vadEnabled = false;
 
   constructor(
+    private config: ConfigStore,
     private onDone: DoneCallback,
     private onSkipped: SkipCallback = () => {},
     private onVadSpeechStart: StartCallback = () => {},
@@ -84,7 +86,7 @@ export class RecordingSession {
     if (this.recording) return;
     this.recording = true;
     const win = ensureCaptureWindow();
-    sendWhenReady(win, "audio:start");
+    sendWhenReady(win, "audio:start", this.config.get().audioInputDeviceId);
   }
 
   stop(): void {
@@ -104,7 +106,7 @@ export class RecordingSession {
     this.vadEnabled = true;
     const win = ensureCaptureWindow();
     log.info(`[recorder] enableVoiceActivation: capture window ready=${!win.webContents.isLoading()}, sending audio:vad-enable`);
-    sendWhenReady(win, "audio:vad-enable");
+    sendWhenReady(win, "audio:vad-enable", this.config.get().audioInputDeviceId);
   }
 
   disableVoiceActivation(): void {

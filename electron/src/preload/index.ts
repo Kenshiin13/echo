@@ -23,8 +23,8 @@ const api = {
   },
 
   // Audio capture window
-  onAudioStart: (cb: () => void): void => {
-    ipcRenderer.on("audio:start", () => cb());
+  onAudioStart: (cb: (deviceId: string | null) => void): void => {
+    ipcRenderer.on("audio:start", (_e, deviceId: string | null) => cb(deviceId));
   },
 
   onAudioStop: (cb: () => void): void => {
@@ -40,8 +40,8 @@ const api = {
   },
 
   // Voice-activation (Silero VAD) in the capture window
-  onVadEnable: (cb: () => void): void => {
-    ipcRenderer.on("audio:vad-enable", () => cb());
+  onVadEnable: (cb: (deviceId: string | null) => void): void => {
+    ipcRenderer.on("audio:vad-enable", (_e, deviceId: string | null) => cb(deviceId));
   },
 
   onVadDisable: (cb: () => void): void => {
