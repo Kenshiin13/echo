@@ -71,13 +71,15 @@ export class WindowManager {
       return this.indicatorWindow;
     }
 
-    const { width, height } = screen.getPrimaryDisplay().workAreaSize;
+    // Initial position — replaced per-show by positionOnActiveDisplay() so
+    // the indicator follows the monitor the user is currently working on.
+    const { x: dx, y: dy, width, height } = screen.getPrimaryDisplay().workArea;
 
     this.indicatorWindow = new BrowserWindow({
       width: 200,
       height: 52,
-      x: width - 220,
-      y: height - 72,
+      x: dx + width - 220,
+      y: dy + height - 72,
       transparent: true,
       frame: false,
       alwaysOnTop: true,
@@ -110,7 +112,11 @@ export class WindowManager {
       this.indicatorReady = true;
       if (this.pendingState && this.pendingState !== "idle") {
         this.indicatorWindow?.webContents.send("indicator:state", this.pendingState);
-        if (!this.indicatorWindow?.isVisible()) this.indicatorWindow?.show();
+        if (this.indicatorWindow && !this.indicatorWindow.isVisible()) {
+          this.positionOnActiveDisplay(this.indicatorWindow);
+          this.indicatorWindow.show();
+          this.reassertAlwaysOnTop(this.indicatorWindow);
+        }
       }
       this.pendingState = null;
     });
@@ -149,9 +155,27 @@ export class WindowManager {
 
     win.webContents.send("indicator:state", state);
     if (!win.isVisible()) {
+      this.positionOnActiveDisplay(win);
       win.show();
       this.reassertAlwaysOnTop(win);
     }
+  }
+
+  // Place the indicator at the bottom-right of whichever monitor the user is
+  // currently on (determined by cursor position). Without this the overlay
+  // would always show on the primary display even when the user is typing on
+  // another monitor.
+  private positionOnActiveDisplay(win: BrowserWindow): void {
+    const cursor = screen.getCursorScreenPoint();
+    const display = screen.getDisplayNearestPoint(cursor);
+    const { x, y, width, height } = display.workArea;
+    const [w, h] = win.getSize();
+    win.setBounds({
+      x: x + width - w - 20,
+      y: y + height - h - 20,
+      width: w,
+      height: h,
+    });
   }
 
   // On Windows, a BrowserWindow's screen-saver-level z-order can drift after

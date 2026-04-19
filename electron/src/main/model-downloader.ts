@@ -19,10 +19,9 @@ const BINARY_URLS: Record<"cpu" | "cuda", string> = {
 };
 
 export function getWhisperCppDir(): string {
-  const rel = path.join("node_modules", "nodejs-whisper", "cpp", "whisper.cpp");
-  return app.isPackaged
-    ? path.join(process.resourcesPath, "app.asar.unpacked", rel)
-    : path.join(app.getAppPath(), rel);
+  // Live in <userData>/whisper-cpp so both the binary zip and the downloaded
+  // .bin models survive npm install (dev) and app upgrades (prod).
+  return path.join(app.getPath("userData"), "whisper-cpp");
 }
 
 export function getModelsDir(): string {
@@ -53,10 +52,11 @@ export function deleteModel(modelSize: string): void {
   }
 }
 
-// On fresh install after a "keep models" uninstall, the NSIS hook has
-// stashed the user's .bin files in userData/models-preserved/. Move them
-// back into the install-dir models/ folder so the rest of the code (which
-// always looks there) just works.
+// Legacy migration: v1.x's NSIS uninstaller (with "keep models" chosen)
+// stashed .bin files in userData/models-preserved/ so they'd survive a
+// reinstall of the install-dir-based layout. v2.0.1+ stores models in
+// userData/whisper-cpp/models/ directly, so we just move any legacy
+// preserved models into the new location on first launch and forget.
 export function restorePreservedModels(): void {
   const src = path.join(app.getPath("userData"), "models-preserved");
   if (!fs.existsSync(src)) return;

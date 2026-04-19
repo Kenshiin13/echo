@@ -1,6 +1,6 @@
 {
   "name": "echo",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Local push-to-talk voice-to-text for Windows",
   "main": "dist/main/main/index.js",
   "author": "Kenshiin13",
@@ -17,8 +17,7 @@
     "build:main": "tsc --project tsconfig.main.json",
     "dist": "npm run build && electron-builder --win",
     "dist:win": "npm run build && electron-builder --win",
-    "rebuild": "electron-builder install-app-deps",
-    "setup:whisper": "node scripts/setup-whisper.mjs"
+    "rebuild": "electron-builder install-app-deps"
   },
   "dependencies": {
     "@mantine/core": "^7.17.0",
