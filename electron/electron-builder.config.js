@@ -16,19 +16,32 @@ module.exports = {
     output: "../dist/electron-release",
     buildResources: "build-resources",
   },
+  // Include the built output + runtime deps. electron-builder's default
+  // patterns get replaced when `files` is set explicitly, so we list what
+  // we need. Native .node binaries land where npm puts them under
+  // node_modules/<pkg>/... and stay unpacked via `asarUnpack` below.
   files: [
     "dist/**",
     "!dist/renderer/**/*.map",
-    // uiohook-napi is macOS/Linux only — exclude it from Windows builds
+    "node_modules/**/*",
+    "package.json",
+    // uiohook-napi is macOS/Linux only — skip on Windows builds.
     ...(process.platform === "win32" ? ["!node_modules/uiohook-napi/**"] : []),
+    // Dev-only noise — keep slim but don't over-filter.
+    "!node_modules/**/*.{md,map,ts,tsx}",
+    "!node_modules/**/{test,tests,__tests__,example,examples,docs,.github}/**",
+    "!node_modules/**/{LICENSE,license,LICENCE,licence,CHANGELOG,changelog,README,readme}{,.md,.txt,.markdown}",
   ],
+  // Native modules loaded via require() must sit on the real filesystem,
+  // not inside app.asar. All three are standard prebuilt-.node packages.
   asarUnpack: [
-    "node_modules/nodejs-whisper/**",
+    "node_modules/onnxruntime-node/**",
     "node_modules/koffi/**",
     "node_modules/@nut-tree-fork/**",
+    "node_modules/uiohook-napi/**",
   ],
-  // koffi ships pre-built Electron binaries — no native compilation needed.
-  // uiohook-napi requires MSVC and is not used on Windows; skip it via beforeBuild.
+  // Native modules need an Electron ABI rebuild on macOS/Linux. Windows
+  // ships prebuilts for all of them; skip rebuild to save a CI step.
   npmRebuild: process.platform !== "win32",
   beforeBuild: async (context) => {
     if (context.platform.name === "windows") {
@@ -38,6 +51,9 @@ module.exports = {
       if (fs.existsSync(p)) fs.rmSync(p, { recursive: true, force: true });
     }
   },
+  // Ad-hoc signs the macOS .app (no paid Apple Developer ID).
+  // No-op on Windows/Linux.
+  afterPack: "./scripts/mac-afterpack.js",
   extraResources: [
     {
       from: "../assets",
@@ -65,17 +81,13 @@ module.exports = {
   mac: {
     icon: "../assets/echo_macos_app_icon.icns",
     category: "public.app-category.productivity",
+    // Apple Silicon only (M1/M2/M3/M4). Intel Macs are not supported.
     target: [
       { target: "dmg", arch: ["arm64"] },
-      { target: "dmg", arch: ["x64"] },
     ],
-    // We don't have an Apple Developer ID, so we ship unsigned.
-    // `hardenedRuntime: true` with a missing/invalid signature makes Gatekeeper
-    // report the app as "damaged" with no right-click bypass — worse UX than
-    // shipping plain unsigned. `identity: null` tells electron-builder to skip
-    // signing entirely so Gatekeeper falls back to the normal "unidentified
-    // developer" prompt that users can bypass with right-click → Open (and, in
-    // the worst case, by clearing the quarantine xattr — see README).
+    // Unsigned — we don't have a paid Apple Developer ID. afterPack does
+    // an ad-hoc signing pass so Gatekeeper treats this as "unidentified
+    // developer" rather than "damaged" (right-click → Open to bypass).
     identity: null,
   },
   dmg: {

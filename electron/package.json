@@ -18,10 +18,10 @@
     "dist": "npm run build && electron-builder",
     "dist:win": "npm run build && electron-builder --win",
     "dist:mac": "npm run build && electron-builder --mac",
-    "rebuild": "electron-builder install-app-deps",
-    "setup:whisper": "node scripts/setup-whisper.mjs"
+    "rebuild": "electron-builder install-app-deps"
   },
   "dependencies": {
+    "@huggingface/transformers": "^4.1.0",
     "@mantine/core": "^7.17.0",
     "@mantine/hooks": "^7.17.0",
     "@nut-tree-fork/nut-js": "^4.2.6",
@@ -29,7 +29,7 @@
     "@tabler/icons-react": "^3.31.0",
     "electron-store": "^8.2.0",
     "koffi": "^2.16.0",
-    "nodejs-whisper": "^0.1.17",
+    "onnxruntime-node": "^1.24.3",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },

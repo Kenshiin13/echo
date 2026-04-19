@@ -14,7 +14,7 @@ import { SingleInstance } from "./single-instance";
 import { setupIpc } from "./ipc";
 import { getSystemInfo } from "./system-info";
 import { log } from "./logger";
-import { modelExists, downloadModel, binaryMatchesBackend, downloadBinary, restorePreservedModels } from "./model-downloader";
+import { modelExists } from "./model-downloader";
 
 async function main() {
   await app.whenReady();
@@ -122,46 +122,27 @@ async function main() {
 
   tray.create();
 
-  // Restore any models the user preserved on a previous uninstall
-  restorePreservedModels();
-
-  // Download correct binary variant if backend changed (e.g. CPU → CUDA)
-  const backend = config.get().backend;
-  if (process.platform === "win32" && !binaryMatchesBackend(backend)) {
-    const variant = backend === "cuda" ? "cuda" : "cpu";
-    log.info(`Binary variant mismatch — downloading ${variant} binary…`);
-    windows.updateIndicator("downloading");
-    try {
-      await downloadBinary(variant, (pct) => windows.sendDownloadProgress(pct));
-    } catch (err) {
-      log.error("Binary download failed:", err);
-      windows.updateIndicator("error");
-      await new Promise((r) => setTimeout(r, 3000));
-    }
-    windows.updateIndicator("idle");
-  }
-
-  // Download selected model if missing before enabling the hotkey
+  // Transformers.js downloads the selected Whisper model lazily on first use
+  // into <userData>/whisper-models. Show the download indicator while it
+  // fetches (only on first run or after a model change / cache wipe), then
+  // warm the pipeline so the first real transcription is instant.
   const selectedModel = config.get().modelSize;
-  if (!modelExists(selectedModel)) {
-    log.info(`Model ggml-${selectedModel}.bin not found — downloading…`);
+  const alreadyCached = modelExists(selectedModel);
+  if (!alreadyCached) {
+    log.info(`Model ${selectedModel} not cached — will download on first transcription`);
     windows.updateIndicator("downloading");
-    try {
-      await downloadModel(selectedModel, (pct) => windows.sendDownloadProgress(pct));
-      log.info(`Model ggml-${selectedModel}.bin ready`);
-    } catch (err) {
-      log.error("Model download failed:", err);
-      windows.updateIndicator("error");
-      await new Promise((r) => setTimeout(r, 3000));
-    }
-    windows.updateIndicator("idle");
   }
-
-  // Preload the Whisper model into the persistent server subprocess so the
-  // first transcription doesn't pay a cold model-load cost.
-  transcriber.ensureStarted().catch((err) => {
-    log.error("Initial whisper-server start failed:", err);
-  });
+  transcriber.setProgressCallback((pct) => windows.sendDownloadProgress(pct));
+  transcriber.ensureStarted()
+    .then(() => {
+      transcriber.setProgressCallback(null);
+      if (!alreadyCached) windows.updateIndicator("idle");
+    })
+    .catch((err) => {
+      log.error("Initial transcriber start failed:", err);
+      windows.updateIndicator("error");
+      setTimeout(() => windows.updateIndicator("idle"), 3000);
+    });
 
   const boot = config.get();
   log.info(`Boot config: voiceActivation=${boot.voiceActivation}, hotkey=${boot.hotkey}, model=${boot.modelSize}`);

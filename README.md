@@ -3,14 +3,13 @@
 </p>
 
 <p align="center">
-  <b>Local voice-to-text, anywhere on your desktop.</b><br/>
-  Push-to-talk with a hotkey — or flip on voice activation and just start talking. Your words get pasted into whatever window you're in.
+  <b>Local voice-to-text for your desktop.</b><br/>
+  Hold a hotkey or just start talking; the transcript gets pasted where your cursor is.
 </p>
 
 <p align="center">
   <a href="https://github.com/Kenshiin13/echo/releases"><img src="https://img.shields.io/github/v/release/Kenshiin13/echo?style=flat-square&color=3FA8E0" alt="Release"/></a>
   <img src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS-1f2937?style=flat-square" alt="Platform"/>
-  <img src="https://img.shields.io/badge/whisper.cpp-v1.8.4-A855F7?style=flat-square" alt="whisper.cpp"/>
 </p>
 
 ---
@@ -21,18 +20,14 @@
 
 ## Features
 
-- **Global push-to-talk** — press a hotkey anywhere (default `F9`), speak, release. Transcript is pasted at your cursor.
-- **Voice activation (optional)** — hands-free mode powered by [Silero VAD](https://github.com/snakers4/silero-vad). Flip it on in Settings and Echo auto-transcribes each utterance as you speak. Ignores non-speech noise.
-- **Fully local transcription** — all audio and transcription stays on-device via [whisper.cpp](https://github.com/ggml-org/whisper.cpp). Your voice never leaves your machine.
-- **Automatic translation (optional)** — point Echo at a target language and it will translate each transcript via [DeepL](https://www.deepl.com/) before pasting. Skipped automatically when you're already speaking the target language. Audio still stays local; only the transcript text is sent.
-- **Low-latency transcription** — Whisper runs as a persistent `whisper-server` process with the model kept resident in memory, so every utterance skips cold-load overhead.
-- **GPU acceleration** — CUDA on Windows (NVIDIA), Metal on Apple Silicon, CPU fallback everywhere.
-- **Five model sizes** — from 75 MB (`tiny`) to 1.6 GB (`large-v3-turbo`). Pick the accuracy/speed tradeoff you want.
-- **14 languages + auto-detect** — English, German, French, Spanish, Italian, Portuguese, Dutch, Russian, Chinese, Japanese, Korean, Arabic…
-- **Live audio indicator** — a small overlay shows a waveform while you speak, progress while a model downloads, and a check when paste completes.
-- **Model manager** — download, switch, and delete models from the settings window. New models download with a progress bar on first use.
-- **Auto-paste or clipboard-only** — toggle whether Echo pastes directly or just copies to clipboard.
-- **Runs in the tray** — closes to tray, launches at login (optional), no dock clutter.
+- Push-to-talk hotkey (default `F9`) that works in any app
+- Voice activation mode (Silero VAD) if you don't want to hold a key
+- Whisper runs locally via ONNX Runtime — audio stays on your machine
+- Optional DeepL translation into a target language of your choice
+- Five Whisper model sizes: `tiny`, `base`, `small`, `medium`, `large-v3-turbo`
+- 14 language presets plus auto-detect
+- Auto-paste at cursor, or clipboard-only
+- Lives in the system tray; can start at login
 
 ## Install
 
@@ -40,49 +35,45 @@ Download the latest installer from the [Releases page](https://github.com/Kenshi
 
 | Platform | File |
 |----------|------|
-| Windows 10/11 (x64) | `Echo-Setup-X.Y.Z.exe` |
-| macOS (Apple Silicon) | `Echo-X.Y.Z-arm64.dmg` |
+| Windows 10/11 (x64) | `Echo.Setup.X.Y.Z.exe` |
+| macOS (Apple Silicon — M1/M2/M3/M4) | `Echo-X.Y.Z-arm64.dmg` |
 
-> **macOS note:** the build is unsigned (no paid Apple Developer ID). After dragging **Echo** to Applications, right-click the app → **Open** on first launch to bypass Gatekeeper.
+> **macOS note:** the build isn't signed. After dragging Echo to Applications, right-click it and choose **Open** the first time so Gatekeeper lets it through.
 >
-> If macOS still refuses with *"Echo is damaged and can't be opened"*, it's the quarantine flag from the download. Clear it with:
+> If it still refuses with *"Echo is damaged and can't be opened"*, run:
 >
 > ```bash
 > xattr -cr /Applications/Echo.app && open /Applications/Echo.app
 > ```
 
-On first launch, Echo will auto-download the selected whisper model (`base` by default, ~142 MB) with a progress indicator. If you have an NVIDIA GPU and select the **CUDA** backend, it will also download the CUDA-enabled binary.
+On first launch Echo downloads the selected Whisper model from Hugging Face and caches it in your user data directory.
 
 ## Usage
 
 **Push-to-talk (default):**
 
-1. Press and hold **F9** (or your custom hotkey).
+1. Hold `F9` (or whatever hotkey you set).
 2. Speak.
-3. Release — your transcript gets pasted into whatever text field has focus.
+3. Release. Transcript is pasted into the focused text field.
 
 **Voice activation:**
 
-1. Open Settings → toggle **Voice activation** on → **Save changes**.
-2. Just speak. Echo detects the start and end of each utterance and pastes it automatically. The hotkey is disabled while voice activation is on; the mic stays live the whole time.
-
-The tray icon gives you quick access to settings, the model picker, and quit.
+Open Settings, toggle **Voice activation** on, save. Echo then listens continuously and transcribes each utterance as you speak. The mic stays live; the hotkey is disabled while this is on.
 
 ## Configuration
 
-Open settings from the tray icon. Everything is persisted to `electron-store` in your user data directory.
+Settings are available from the tray icon and persisted in your user data directory.
 
 | Setting | Default | Notes |
 |---------|---------|-------|
 | Push-to-talk hotkey | `F9` | Any key or modifier combo |
 | Exit shortcut | `Ctrl+Alt+Q` | Global quit |
 | Model size | `base` | `tiny` / `base` / `small` / `medium` / `large-v3-turbo` |
-| Language | Auto-detect | Pick one for better accuracy if auto-detect mis-fires |
-| Compute backend | Auto | `CPU` / `CUDA` / `MLX` — auto-selected based on hardware |
+| Language | Auto-detect | Pin one for a small speedup and to enable the translate-skip optimization |
 | Auto-paste | On | Off = copy to clipboard only |
-| Voice activation | Off | Always-listening mode using Silero VAD (disables the hotkey) |
-| Translate transcription to | Off | Target language for automatic DeepL translation; skipped when you already speak it |
-| DeepL API key | — | Required only when a translation target is set. Free keys end in `:fx` and include 500k chars/month |
+| Voice activation | Off | Always-on mic; disables the push-to-talk hotkey |
+| Translate transcription to | Off | Sends the transcript to DeepL for translation |
+| DeepL API key | — | Only needed when a translation target is set. Free keys end in `:fx` |
 | Start at login | Off | |
 
 ## Build from source
@@ -93,31 +84,26 @@ Requires Node.js 20+.
 git clone https://github.com/Kenshiin13/echo.git
 cd echo/electron
 npm install --legacy-peer-deps
-npm run setup:whisper   # downloads whisper.cpp binary + base model
-npm run dev             # dev mode with hot reload
+npm run dev
 ```
 
 Package an installer:
 
 ```bash
-npm run dist:win   # Windows NSIS installer  → dist/electron-release/
-npm run dist:mac   # macOS DMG               → dist/electron-release/
+npm run dist:win   # Windows NSIS installer
+npm run dist:mac   # macOS DMG
 ```
 
-Releases are automated — pushing a `v*` tag (e.g. `v1.2.0`) triggers the [release workflow](.github/workflows/release.yml) which builds Windows + macOS artifacts and attaches them to a GitHub Release.
+Pushing a `v*` tag runs the [release workflow](.github/workflows/release.yml) and publishes a GitHub Release with the built artifacts.
 
 ## Stack
 
-- **[Electron 33](https://www.electronjs.org/)** — shell
-- **[React 18](https://react.dev/) + [Vite 6](https://vite.dev/)** — renderer (three entries: settings, indicator overlay, audio capture)
-- **[Mantine v7](https://mantine.dev/) + [Tailwind](https://tailwindcss.com/)** — UI
-- **[whisper.cpp](https://github.com/ggml-org/whisper.cpp)** — transcription engine, run as a long-lived `whisper-server` subprocess with the model kept resident in RAM
-- **[Silero VAD](https://github.com/snakers4/silero-vad)** via [@ricky0123/vad-web](https://github.com/ricky0123/vad) — neural voice activity detection for the voice-activation mode
-- **[DeepL API](https://www.deepl.com/pro-api)** — optional cloud translation layer between Whisper and paste
-- **[koffi](https://koffi.dev/)** — FFI for global key polling on Windows
-- **[@nut-tree-fork/nut-js](https://github.com/nut-tree/nut.js)** — keyboard simulation for auto-paste
-- **[electron-store](https://github.com/sindresorhus/electron-store)** — config persistence
-- **[electron-builder](https://www.electron.build/)** — NSIS (Windows) + DMG (macOS) packaging
+- [Electron 33](https://www.electronjs.org/), [React 18](https://react.dev/), [Vite 6](https://vite.dev/), [Mantine](https://mantine.dev/), [Tailwind](https://tailwindcss.com/)
+- [@huggingface/transformers](https://huggingface.co/docs/transformers.js) + [onnxruntime-node](https://onnxruntime.ai/) for Whisper inference
+- [Silero VAD](https://github.com/snakers4/silero-vad) via [@ricky0123/vad-web](https://github.com/ricky0123/vad) for voice activation
+- [DeepL API](https://www.deepl.com/pro-api) (optional) for translation
+- [koffi](https://koffi.dev/) for the Windows global hotkey, [@nut-tree-fork/nut-js](https://github.com/nut-tree/nut.js) for the paste
+- [electron-store](https://github.com/sindresorhus/electron-store) for settings, [electron-builder](https://www.electron.build/) for packaging
 
 ## License
 
