@@ -1,151 +1,36 @@
 import React, { useEffect, useRef, useState } from "react";
 import {
-  Stack, Group, Text, Button, Select, Switch,
-  Badge, Loader, Alert, Box, ScrollArea, ActionIcon,
-  PasswordInput, HoverCard, Anchor, Modal, Textarea,
-  TextInput,
+  AppShell, NavLink, Stack, Group, Text, Button, Loader, Alert, Box,
+  ScrollArea, Badge,
 } from "@mantine/core";
 import {
-  IconAlertCircle, IconCheck, IconRefresh,
-  IconMicrophone, IconCpu, IconBrain,
-  IconBolt, IconInfoCircle, IconX, IconTrash,
-  IconLanguage, IconCloudUpload, IconReplace, IconPlus,
+  IconSettings, IconBrain, IconWand,
+  IconInfoCircle, IconCheck, IconAlertCircle, IconRefresh,
 } from "@tabler/icons-react";
-import type { Config, SystemInfo, Replacement } from "@shared/types";
-import { SectionLabel } from "./components/SectionLabel";
-import { KeybindInput } from "./components/KeybindInput";
+import type { Config, SystemInfo } from "@shared/types";
+import { GeneralSection } from "./sections/GeneralSection";
+import { ModelSection } from "./sections/ModelSection";
+import { PostProcessingSection } from "./sections/PostProcessingSection";
+import { AboutSection } from "./sections/AboutSection";
 
-// ── helpers ──────────────────────────────────────────────────────────────────
+type SectionId = "general" | "model" | "post-processing" | "about";
+
+interface NavItem {
+  id: SectionId;
+  label: string;
+  icon: typeof IconSettings;
+}
+
+const NAV: NavItem[] = [
+  { id: "general",         label: "General",         icon: IconSettings },
+  { id: "model",           label: "Model",           icon: IconBrain },
+  { id: "post-processing", label: "Post-processing", icon: IconWand },
+  { id: "about",           label: "About",           icon: IconInfoCircle },
+];
 
 function assetUrl(sysInfo: SystemInfo, name: string): string {
   return `${sysInfo.assetsUrl}/${name}`;
 }
-
-// ── section card wrapper ──────────────────────────────────────────────────────
-
-function Card({
-  children,
-  delay = 0,
-}: {
-  children: React.ReactNode;
-  delay?: number;
-}) {
-  return (
-    <Box
-      className="echo-card"
-      style={{ animationDelay: `${delay}ms` }}
-    >
-      {children}
-    </Box>
-  );
-}
-
-// ── branded header (replaces TitleBar + old static header) ───────────────────
-
-function BrandedHeader({
-  isMac,
-  logoUrl,
-  loading = false,
-}: {
-  isMac: boolean;
-  logoUrl: string | null;
-  loading?: boolean;
-}) {
-  return (
-    <Box
-      style={{
-        flexShrink: 0,
-        background: "linear-gradient(160deg, #0d1b30 0%, #0B1220 100%)",
-        borderBottom: "1px solid var(--border)",
-        padding: isMac ? "20px 24px 16px 80px" : "18px 24px 16px",
-        position: "relative",
-        overflow: "hidden",
-        WebkitAppRegion: "drag",
-      } as React.CSSProperties}
-    >
-      {/* Accent glow */}
-      <Box
-        style={{
-          position: "absolute",
-          top: -50, left: -30,
-          width: 260, height: 260,
-          background: "radial-gradient(circle, rgba(63,168,224,0.09) 0%, transparent 70%)",
-          pointerEvents: "none",
-        }}
-      />
-
-      {/* Close button — Windows only */}
-      {!isMac && (
-        <ActionIcon
-          variant="subtle"
-          color="gray"
-          size={28}
-          radius="sm"
-          onClick={() => window.echo.closeSettings()}
-          style={{
-            position: "absolute",
-            top: 10,
-            right: 10,
-            WebkitAppRegion: "no-drag",
-            color: "var(--muted)",
-            zIndex: 2,
-          } as React.CSSProperties}
-          aria-label="Close settings"
-        >
-          <IconX size={14} stroke={2} />
-        </ActionIcon>
-      )}
-
-      {logoUrl ? (
-        <>
-          <img
-            src={logoUrl}
-            alt="Echo"
-            style={{
-              height: 42,
-              objectFit: "contain",
-              position: "relative",
-              zIndex: 1,
-              WebkitAppRegion: "no-drag",
-            } as React.CSSProperties}
-            onError={(e) => {
-              const img = e.target as HTMLImageElement;
-              img.style.display = "none";
-              const sib = img.nextElementSibling as HTMLElement | null;
-              if (sib) sib.style.display = "block";
-            }}
-          />
-          <Text
-            fw={700} size="xl" c="echo.5"
-            style={{ display: "none", letterSpacing: "0.2em", textTransform: "uppercase" }}
-          >
-            ECHO
-          </Text>
-        </>
-      ) : (
-        <Text fw={700} size="xl" c="echo.5" style={{ letterSpacing: "0.2em", textTransform: "uppercase" }}>
-          ECHO
-        </Text>
-      )}
-
-      {!loading && (
-        <Text size="xs" c="dimmed" mt={4} style={{ position: "relative", zIndex: 1 }}>
-          Voice-to-text · Powered by Whisper
-        </Text>
-      )}
-    </Box>
-  );
-}
-
-// ── main component ────────────────────────────────────────────────────────────
-
-const MODEL_LABELS: Record<string, string> = {
-  tiny:            "Tiny — 75 MB",
-  base:            "Base — 142 MB",
-  small:           "Small — 488 MB",
-  medium:          "Medium — 1.5 GB",
-  "large-v3-turbo":"Large v3 Turbo — 1.6 GB",
-};
 
 export function App() {
   const [config, setConfig] = useState<Config | null>(null);
@@ -154,10 +39,11 @@ export function App() {
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [needsRestart, setNeedsRestart] = useState(false);
+  const [active, setActive] = useState<SectionId>("general");
   const [downloadedModels, setDownloadedModels] = useState<string[]>([]);
   const [deletingModel, setDeletingModel] = useState<string | null>(null);
-  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const didFireReady = useRef(false);
+  const skipFirstAutoSave = useRef(true);
 
   useEffect(() => {
     Promise.all([
@@ -171,16 +57,6 @@ export function App() {
     });
   }, []);
 
-  async function handleDeleteModel(modelSize: string) {
-    setDeletingModel(modelSize);
-    setConfirmDelete(null);
-    await window.echo.deleteModel(modelSize);
-    const models = await window.echo.listModels();
-    setDownloadedModels(models);
-    setDeletingModel(null);
-  }
-
-  // Dismiss preloader once data is loaded
   useEffect(() => {
     if (config && sysInfo && !didFireReady.current) {
       didFireReady.current = true;
@@ -188,544 +64,206 @@ export function App() {
     }
   }, [config, sysInfo]);
 
+  useEffect(() => {
+    return window.echo.onModelDownloaded(async () => {
+      const models = await window.echo.listModels();
+      setDownloadedModels(models);
+    });
+  }, []);
+
+  // Debounced auto-save. Skips the first render (initial config load from disk).
+  useEffect(() => {
+    if (!config) return;
+    if (skipFirstAutoSave.current) {
+      skipFirstAutoSave.current = false;
+      return;
+    }
+    setError(null);
+    const t = setTimeout(async () => {
+      setSaving(true);
+      const result = await window.echo.saveConfig(config);
+      setSaving(false);
+      if (result.ok) {
+        setSaved(true);
+        const models = await window.echo.listModels();
+        setDownloadedModels(models);
+        setTimeout(() => setSaved(false), 1200);
+      } else {
+        setError(result.error ?? "Save failed");
+      }
+    }, 400);
+    return () => clearTimeout(t);
+  }, [config]);
+
   function patch<K extends keyof Config>(key: K, val: Config[K]) {
     setConfig((c) => (c ? { ...c, [key]: val } : c));
-    // Things that actually require an app restart. modelSize restarts just
-    // whisper-server behind the scenes (see ipc.ts save handler), and
-    // language+prompt are per-request — no restart needed for any of them.
     const restartKeys: (keyof Config)[] = ["exitKey", "backend"];
     if (restartKeys.includes(key)) setNeedsRestart(true);
-    setSaved(false);
   }
 
-  async function handleSave() {
-    if (!config) return;
-    setSaving(true);
-    setError(null);
-    const result = await window.echo.saveConfig(config);
-    setSaving(false);
-    if (result.ok) {
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2500);
-    } else {
-      setError(result.error ?? "Save failed");
+  async function handleDeleteModel(modelSize: string) {
+    setDeletingModel(modelSize);
+    await window.echo.deleteModel(modelSize);
+    const models = await window.echo.listModels();
+    setDownloadedModels(models);
+    setDeletingModel(null);
+    // If the user just nuked the active model, auto-switch to another downloaded
+    // one so transcription keeps working without a re-download. If nothing
+    // remains, set modelSize to null — the UI banner prompts the user to pick
+    // one, and the Select dropdown clears so re-picking the same size retriggers
+    // the download confirm modal.
+    if (config && modelSize === config.modelSize) {
+      patch("modelSize", (models[0] ?? null) as Config["modelSize"]);
     }
   }
 
-  const isMac = typeof navigator !== "undefined" && navigator.userAgent.includes("Macintosh");
-
-  // Loading state — preloader visible until dismissed via echo:ready
   if (!config || !sysInfo) {
     return (
-      <Box style={{ display: "flex", flexDirection: "column", height: "100%" }}>
-        <BrandedHeader isMac={isMac} logoUrl={null} loading />
-        <Stack align="center" justify="center" style={{ flex: 1 }}>
-          <Loader color="echo" size="sm" />
-        </Stack>
+      <Box style={{ display: "flex", height: "100%", alignItems: "center", justifyContent: "center" }}>
+        <Loader color="echo" size="sm" />
       </Box>
     );
   }
 
   const logoUrl = assetUrl(sysInfo, "echo_header_top_left_256x96.png");
+  const activeItem = NAV.find((n) => n.id === active)!;
+  const showFooter = !!error || needsRestart;
 
   return (
-    <Box style={{ display: "flex", flexDirection: "column", height: "100%" }}>
-      <BrandedHeader isMac={isMac} logoUrl={logoUrl} />
+    <AppShell
+      padding={0}
+      header={{ height: 40 }}
+      navbar={{ width: 200, breakpoint: 0 }}
+      styles={{
+        root: { background: "var(--bg)", height: "100%" },
+        main: { background: "var(--bg)", display: "flex", flexDirection: "column", height: "calc(100vh - 40px)" },
+        header: { background: "var(--bg)", borderBottom: "1px solid var(--border)" },
+        navbar: { background: "var(--surface)", borderRight: "1px solid var(--border)" },
+      }}
+    >
+      <AppShell.Header style={{ WebkitAppRegion: "drag" } as React.CSSProperties}>
+        <Group h="100%" px="md" gap="xs" align="center" justify="space-between" wrap="nowrap">
+          <Group gap="xs" align="center" wrap="nowrap">
+            <img src={logoUrl} alt="Echo" height={20} style={{ objectFit: "contain" }} />
+            <Text size="sm" fw={600} c="dimmed" style={{ letterSpacing: "0.08em" }}>
+              ECHO
+            </Text>
+          </Group>
+          <SaveIndicator saving={saving} saved={saved} />
+        </Group>
+      </AppShell.Header>
 
-      {/* ── Scrollable content ── */}
-      <ScrollArea style={{ flex: 1 }} scrollbarSize={5}>
-        <Stack gap={10} p="md">
-
-          {/* Input */}
-          <Card delay={0}>
-            <Stack gap={14}>
-              <Group gap={8}>
-                <IconMicrophone size={14} color="var(--accent)" />
-                <SectionLabel>Input</SectionLabel>
-              </Group>
-              <KeybindInput
-                label="Push-to-talk hotkey"
-                description="Hold to record. Works globally across all windows."
-                value={config.hotkey}
-                onChange={(v) => patch("hotkey", v)}
-              />
-              <KeybindInput
-                label="Exit shortcut"
-                description="Quit Echo from anywhere."
-                value={config.exitKey}
-                onChange={(v) => patch("exitKey", v)}
-              />
-            </Stack>
-          </Card>
-
-          {/* Model */}
-          <Card delay={60}>
-            <Stack gap={14}>
-              <Group gap={8}>
-                <IconBrain size={14} color="var(--accent)" />
-                <SectionLabel>Model</SectionLabel>
-              </Group>
-              <Select
-                label="Whisper model size"
-                description="Larger = higher accuracy, more RAM, slower first load"
-                value={config.modelSize}
-                onChange={(v) => v && patch("modelSize", v as Config["modelSize"])}
-                data={[
-                  { value: "tiny",          label: "Tiny — 75 MB · fastest" },
-                  { value: "base",          label: "Base — 142 MB (default)" },
-                  { value: "small",         label: "Small — 488 MB · good quality" },
-                  { value: "medium",        label: "Medium — 1.5 GB · great quality" },
-                  { value: "large-v3-turbo",label: "Large v3 Turbo — 1.6 GB · best" },
-                ]}
-              />
-              <Select
-                label="Language"
-                description="Auto-detect is recommended unless accuracy is poor"
-                value={config.language ?? "auto"}
-                onChange={(v) => patch("language", v === "auto" ? null : v)}
-                searchable
-                data={[
-                  { value: "auto", label: "Auto-detect" },
-                  { value: "en", label: "English" },
-                  { value: "de", label: "German" },
-                  { value: "fr", label: "French" },
-                  { value: "es", label: "Spanish" },
-                  { value: "it", label: "Italian" },
-                  { value: "pt", label: "Portuguese" },
-                  { value: "nl", label: "Dutch" },
-                  { value: "ru", label: "Russian" },
-                  { value: "zh", label: "Chinese" },
-                  { value: "ja", label: "Japanese" },
-                  { value: "ko", label: "Korean" },
-                  { value: "ar", label: "Arabic" },
-                ]}
-              />
-              <Select
-                label="Compute backend"
-                description={`Recommended: ${sysInfo.recommendedBackend.toUpperCase()}`}
-                value={config.backend}
-                onChange={(v) => v && patch("backend", v as Config["backend"])}
-                data={[
-                  { value: "cpu",  label: "CPU — int8, works everywhere" },
-                  { value: "cuda", label: "CUDA — NVIDIA GPU", disabled: !sysInfo.hasNvidiaGpu },
-                ]}
-                leftSection={<IconCpu size={14} />}
-              />
-              <Textarea
-                label={
-                  <Group gap={4} wrap="nowrap">
-                    <Text size="sm" fw={500}>Initial prompt (optional)</Text>
-                    <HoverCard width={340} shadow="md" withArrow openDelay={100} closeDelay={200}>
-                      <HoverCard.Target>
-                        <IconInfoCircle size={13} style={{ cursor: "help", color: "var(--muted)" }} />
-                      </HoverCard.Target>
-                      <HoverCard.Dropdown>
-                        <Text size="xs">
-                          Whisper treats this as a <b>fake previous transcript</b> and continues in
-                          the same style — it doesn't follow instructions. Only the <i>shape</i> of
-                          your prompt matters (capitalization, punctuation, tone), not its meaning.
-                          Limit: ~224 tokens.
-                        </Text>
-                        <Text size="xs" mt={6} c="dimmed">
-                          ✅ Works — custom vocabulary:
-                          <br /><i>"Kubernetes, Postgres, TanStack, tRPC, Anthropic"</i>
-                        </Text>
-                        <Text size="xs" mt={4} c="dimmed">
-                          ✅ Works — lowercase/no punctuation (make the prompt LOOK that way):
-                          <br /><i>"so yeah i was thinking we could maybe try it"</i>
-                        </Text>
-                        <Text size="xs" mt={4} c="dimmed">
-                          ❌ Doesn't work — instructions written as English sentences:
-                          <br /><i>"No punctuation. Casual. All lowercase."</i>
-                          <br />Whisper sees the period + capital N and keeps punctuating.
-                        </Text>
-                      </HoverCard.Dropdown>
-                    </HoverCard>
-                  </Group>
-                }
-                description="Sent on every transcription. Changes apply immediately — no restart."
-                placeholder="e.g. Kubernetes, Postgres, TanStack, tRPC"
-                value={config.prompt}
-                onChange={(e) => patch("prompt", e.currentTarget.value)}
-                autosize
-                minRows={2}
-                maxRows={5}
-              />
-            </Stack>
-          </Card>
-
-          {/* Find & Replace */}
-          <Card delay={85}>
-            <Stack gap={14}>
-              <Group gap={8}>
-                <IconReplace size={14} color="var(--accent)" />
-                <SectionLabel>Find &amp; Replace</SectionLabel>
-              </Group>
-              <Text size="xs" c="dimmed">
-                Applied to every transcript after Whisper and any translation, before paste.
-                Case-insensitive, run in order. Use <code>\n</code> in the replacement to
-                insert a newline.
-              </Text>
-              {config.replacements.length > 0 && (
-                <Stack gap={6}>
-                  {config.replacements.map((rule, i) => (
-                    <Group key={i} gap={6} wrap="nowrap" align="center">
-                      <TextInput
-                        placeholder="find"
-                        value={rule.from}
-                        onChange={(e) => {
-                          const next: Replacement[] = config.replacements.map((r, j) =>
-                            j === i ? { ...r, from: e.currentTarget.value } : r,
-                          );
-                          patch("replacements", next);
-                        }}
-                        style={{ flex: 1 }}
-                        size="xs"
-                      />
-                      <Text size="sm" c="dimmed">→</Text>
-                      <TextInput
-                        placeholder="replace with"
-                        value={rule.to}
-                        onChange={(e) => {
-                          const next: Replacement[] = config.replacements.map((r, j) =>
-                            j === i ? { ...r, to: e.currentTarget.value } : r,
-                          );
-                          patch("replacements", next);
-                        }}
-                        style={{ flex: 1 }}
-                        size="xs"
-                      />
-                      <ActionIcon
-                        variant="subtle"
-                        color="red"
-                        size={24}
-                        radius="sm"
-                        onClick={() => {
-                          const next = config.replacements.filter((_, j) => j !== i);
-                          patch("replacements", next);
-                        }}
-                        aria-label="Remove rule"
-                      >
-                        <IconX size={13} />
-                      </ActionIcon>
-                    </Group>
-                  ))}
-                </Stack>
-              )}
-              <Button
-                variant="light"
-                color="echo"
-                size="xs"
-                leftSection={<IconPlus size={13} />}
-                onClick={() =>
-                  patch("replacements", [...config.replacements, { from: "", to: "" }])
-                }
-                style={{ alignSelf: "flex-start" }}
-              >
-                Add rule
-              </Button>
-            </Stack>
-          </Card>
-
-          {/* Downloaded Models */}
-          {downloadedModels.length > 0 && (
-            <Card delay={90}>
-              <Stack gap={10}>
-                <Group gap={8}>
-                  <IconBrain size={14} color="var(--accent)" />
-                  <SectionLabel>Downloaded Models</SectionLabel>
-                </Group>
-                {downloadedModels.map((m) => (
-                  <Group key={m} justify="space-between" wrap="nowrap">
-                    <Text size="sm" c="dimmed">
-                      {MODEL_LABELS[m] ?? m}
-                      {m === config?.modelSize && (
-                        <Badge ml={6} size="xs" variant="light" color="echo">active</Badge>
-                      )}
-                    </Text>
-                    <ActionIcon
-                      variant="subtle"
-                      color="red"
-                      size={24}
-                      radius="sm"
-                      loading={deletingModel === m}
-                      disabled={deletingModel !== null}
-                      onClick={() => setConfirmDelete(m)}
-                      aria-label={`Delete ${m} model`}
-                    >
-                      <IconTrash size={13} />
-                    </ActionIcon>
-                  </Group>
-                ))}
-              </Stack>
-            </Card>
-          )}
-
-          {/* Translation */}
-          <Card delay={110}>
-            <Stack gap={14}>
-              <Group gap={8}>
-                <IconLanguage size={14} color="var(--accent)" />
-                <SectionLabel>Translation</SectionLabel>
-              </Group>
-              <Select
-                label="Translate transcription to"
-                description="Automatically translate your transcript into this language via DeepL. Skipped if you're already speaking it."
-                value={config.translateTo ?? "off"}
-                onChange={(v) => patch("translateTo", v === "off" || !v ? null : v)}
-                data={[
-                  { value: "off", label: "Off — transcribe only" },
-                  { value: "EN", label: "English" },
-                  { value: "DE", label: "German" },
-                  { value: "FR", label: "French" },
-                  { value: "ES", label: "Spanish" },
-                  { value: "IT", label: "Italian" },
-                  { value: "PT", label: "Portuguese" },
-                  { value: "NL", label: "Dutch" },
-                  { value: "PL", label: "Polish" },
-                  { value: "RU", label: "Russian" },
-                  { value: "UK", label: "Ukrainian" },
-                  { value: "ZH", label: "Chinese" },
-                  { value: "JA", label: "Japanese" },
-                  { value: "KO", label: "Korean" },
-                  { value: "TR", label: "Turkish" },
-                  { value: "SV", label: "Swedish" },
-                  { value: "DA", label: "Danish" },
-                  { value: "FI", label: "Finnish" },
-                  { value: "NB", label: "Norwegian" },
-                  { value: "CS", label: "Czech" },
-                  { value: "EL", label: "Greek" },
-                  { value: "HU", label: "Hungarian" },
-                  { value: "RO", label: "Romanian" },
-                  { value: "BG", label: "Bulgarian" },
-                  { value: "SK", label: "Slovak" },
-                  { value: "SL", label: "Slovenian" },
-                  { value: "LT", label: "Lithuanian" },
-                  { value: "LV", label: "Latvian" },
-                  { value: "ET", label: "Estonian" },
-                  { value: "ID", label: "Indonesian" },
-                ]}
-              />
-
-              {config.translateTo && (
-                <Alert
-                  icon={<IconCloudUpload size={14} />}
-                  color="yellow"
-                  variant="light"
-                  radius="md"
-                  p="xs"
-                >
-                  <Text size="xs">
-                    Translation mode sends your transcript to DeepL's servers. Your audio stays
-                    local — only the text leaves your machine, and only when the detected
-                    language differs from the target.
-                  </Text>
-                </Alert>
-              )}
-
-              <PasswordInput
-                label={
-                  <Group gap={4} wrap="nowrap">
-                    <Text size="sm" fw={500}>DeepL API key</Text>
-                    <HoverCard width={300} shadow="md" withArrow openDelay={100} closeDelay={200}>
-                      <HoverCard.Target>
-                        <IconInfoCircle size={13} style={{ cursor: "help", color: "var(--muted)" }} />
-                      </HoverCard.Target>
-                      <HoverCard.Dropdown>
-                        <Text size="xs">
-                          Create a free DeepL account, then copy your API key from the
-                          "Account" tab. Free keys end in <code>:fx</code> and include
-                          500,000 characters/month.
-                        </Text>
-                        <Anchor
-                          href="https://www.deepl.com/your-account/keys"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          size="xs"
-                          c="echo.4"
-                          mt={6}
-                          style={{ display: "inline-block" }}
-                        >
-                          Open DeepL API keys page →
-                        </Anchor>
-                      </HoverCard.Dropdown>
-                    </HoverCard>
-                  </Group>
-                }
-                description={
-                  config.translateTo && !config.deeplApiKey.trim()
-                    ? "Required to enable translation."
-                    : "Stored locally. Free keys end in :fx."
-                }
-                placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx:fx"
-                value={config.deeplApiKey}
-                onChange={(e) => patch("deeplApiKey", e.currentTarget.value)}
-                error={
-                  config.translateTo && !config.deeplApiKey.trim()
-                    ? "API key required for translation"
-                    : undefined
-                }
-              />
-            </Stack>
-          </Card>
-
-          {/* Behaviour */}
-          <Card delay={120}>
-            <Stack gap={14}>
-              <Group gap={8}>
-                <IconBolt size={14} color="var(--accent)" />
-                <SectionLabel>Behaviour</SectionLabel>
-              </Group>
-              <Switch
-                label="Auto-paste transcript"
-                description="Paste at cursor immediately after transcription"
-                checked={config.autoPaste}
-                onChange={(e) => patch("autoPaste", e.currentTarget.checked)}
-                color="echo"
-              />
-              <Switch
-                label="Voice activation"
-                description="Always listen and transcribe automatically when speech is detected (disables push-to-talk hotkey; mic stays on)"
-                checked={config.voiceActivation}
-                onChange={(e) => patch("voiceActivation", e.currentTarget.checked)}
-                color="echo"
-              />
-              <Switch
-                label="Start at login"
-                description="Launch Echo automatically when you log in"
-                checked={config.autostart}
-                onChange={(e) => patch("autostart", e.currentTarget.checked)}
-                color="echo"
-              />
-            </Stack>
-          </Card>
-
-          {/* System info */}
-          <Card delay={180}>
-            <Stack gap={10}>
-              <Group gap={8}>
-                <IconInfoCircle size={14} color="var(--accent)" />
-                <SectionLabel>System</SectionLabel>
-              </Group>
-              <Group gap={6} wrap="wrap">
-                <Badge variant="outline" color="dark.3" size="sm" radius="sm">
-                  {sysInfo.platform}
-                </Badge>
-                {sysInfo.hasNvidiaGpu && (
-                  <Badge variant="light" color="echo" size="sm" radius="sm">
-                    NVIDIA GPU
-                  </Badge>
-                )}
-                <Badge variant="outline" color="dark.3" size="sm" radius="sm">
-                  v{sysInfo.appVersion}
-                </Badge>
-              </Group>
-            </Stack>
-          </Card>
-
-        </Stack>
-      </ScrollArea>
-
-      {/* ── Footer ── */}
-      <Box
-        px="md"
-        py="sm"
-        style={{
-          borderTop: "1px solid var(--border)",
-          background: "var(--surface)",
-          flexShrink: 0,
-        }}
-      >
-        <Stack gap={8}>
-          {error && (
-            <Alert icon={<IconAlertCircle size={14} />} color="red" variant="light" radius="md" p="xs">
-              {error}
-            </Alert>
-          )}
-          {needsRestart && saved && (
-            <Alert
-              icon={<IconRefresh size={14} />}
+      <AppShell.Navbar p="xs">
+        <Stack gap={2}>
+          {NAV.map((item) => (
+            <NavLink
+              key={item.id}
+              active={active === item.id}
+              label={item.label}
+              leftSection={<item.icon size={15} />}
+              onClick={() => setActive(item.id)}
               color="echo"
               variant="light"
-              radius="md"
-              p="xs"
-              withCloseButton={false}
-            >
-              <Group justify="space-between" wrap="nowrap">
-                <Text size="xs">Restart required for some changes.</Text>
-                <Button
-                  size="xs"
-                  variant="light"
-                  color="echo"
-                  onClick={() => window.echo.restart()}
-                  leftSection={<IconRefresh size={12} />}
-                >
-                  Restart
-                </Button>
-              </Group>
-            </Alert>
-          )}
-          <Group justify="flex-end" gap="sm" align="center">
-            {saved && !saving && (
-              <Group gap={5} style={{ animation: "fadeUp 0.2s ease-out" }}>
-                <IconCheck size={14} color="var(--mantine-color-green-5)" />
-                <Text size="sm" c="green.5" fw={500}>Saved</Text>
-              </Group>
-            )}
-            <Button
-              onClick={handleSave}
-              loading={saving}
-              color={saved ? "green" : "echo"}
-              radius="md"
-              style={{
-                transition: "background-color 0.25s, box-shadow 0.25s",
-                boxShadow: saved ? "0 0 14px rgba(74,175,80,0.35)" : undefined,
+              styles={{
+                root: { borderRadius: 8, padding: "8px 10px", transition: "background 0.15s" },
+                label: { fontSize: "var(--mantine-font-size-sm)" },
               }}
-              leftSection={saving ? undefined : <IconCheck size={14} />}
-            >
-              {saved ? "Saved" : "Save changes"}
-            </Button>
-          </Group>
+            />
+          ))}
         </Stack>
-      </Box>
+      </AppShell.Navbar>
 
-      <Modal
-        opened={confirmDelete !== null}
-        onClose={() => setConfirmDelete(null)}
-        title="Delete model?"
-        centered
-        radius="md"
-        overlayProps={{ backgroundOpacity: 0.5, blur: 3 }}
-      >
-        <Stack gap="md">
-          <Text size="sm">
-            Delete{" "}
-            <Text span fw={600} c="echo.4">
-              {confirmDelete ? (MODEL_LABELS[confirmDelete] ?? confirmDelete) : ""}
+      <AppShell.Main>
+        <ScrollArea style={{ flex: 1 }} scrollbarSize={5}>
+          <Box
+            key={active}
+            p="xl"
+            style={{ animation: "fadeIn 0.18s ease-out both" }}
+          >
+            <Text size="md" fw={600} c="white" mb="lg">
+              {activeItem.title}
             </Text>
-            ? You can re-download it any time, but it'll need to be fetched again.
-          </Text>
-          {confirmDelete === config?.modelSize && (
-            <Alert icon={<IconAlertCircle size={14} />} color="yellow" variant="light" radius="md" p="xs">
-              <Text size="xs">
-                This is your <Text span fw={600}>currently active</Text> model. Transcription will be unavailable until you pick another model or re-download.
-              </Text>
-            </Alert>
-          )}
-          <Group justify="flex-end" gap="sm">
-            <Button variant="default" onClick={() => setConfirmDelete(null)}>
-              Cancel
-            </Button>
-            <Button
-              color="red"
-              leftSection={<IconTrash size={14} />}
-              onClick={() => confirmDelete && handleDeleteModel(confirmDelete)}
-            >
-              Delete
-            </Button>
-          </Group>
-        </Stack>
-      </Modal>
-    </Box>
+
+            {active === "general" && (
+              <GeneralSection config={config} patch={patch} />
+            )}
+            {active === "model" && (
+              <ModelSection
+                config={config}
+                patch={patch}
+                sysInfo={sysInfo}
+                downloadedModels={downloadedModels}
+                onDelete={handleDeleteModel}
+                deletingModel={deletingModel}
+              />
+            )}
+            {active === "post-processing" && (
+              <PostProcessingSection config={config} patch={patch} />
+            )}
+            {active === "about" && (
+              <AboutSection sysInfo={sysInfo} />
+            )}
+          </Box>
+        </ScrollArea>
+
+        {showFooter && (
+          <Box
+            px="xl"
+            py="sm"
+            style={{
+              borderTop: "1px solid var(--border)",
+              background: "var(--surface)",
+              flexShrink: 0,
+            }}
+          >
+            <Stack gap={8}>
+              {error && (
+                <Alert icon={<IconAlertCircle size={14} />} color="red" variant="light" radius="md" p="xs">
+                  {error}
+                </Alert>
+              )}
+              {needsRestart && (
+                <Alert icon={<IconRefresh size={14} />} color="echo" variant="light" radius="md" p="xs">
+                  <Group justify="space-between" wrap="nowrap">
+                    <Text size="xs">Restart required for some changes.</Text>
+                    <Button
+                      size="xs"
+                      variant="light"
+                      color="echo"
+                      onClick={() => window.echo.restart()}
+                      leftSection={<IconRefresh size={12} />}
+                    >
+                      Restart
+                    </Button>
+                  </Group>
+                </Alert>
+              )}
+            </Stack>
+          </Box>
+        )}
+      </AppShell.Main>
+    </AppShell>
   );
 }
+
+function SaveIndicator({ saving, saved }: { saving: boolean; saved: boolean }) {
+  if (saving) {
+    return (
+      <Group gap={6} style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}>
+        <Loader color="echo" size={12} />
+        <Text size="xs" c="dimmed">Saving…</Text>
+      </Group>
+    );
+  }
+  if (saved) {
+    return (
+      <Group gap={4} style={{ animation: "fadeUp 0.2s ease-out", WebkitAppRegion: "no-drag" } as React.CSSProperties}>
+        <IconCheck size={13} color="var(--mantine-color-green-5)" />
+        <Text size="xs" c="green.5">Saved</Text>
+      </Group>
+    );
+  }
+  return null;
+}
+
+void Badge;

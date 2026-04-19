@@ -71,6 +71,12 @@ const api = {
   // Model management
   listModels: (): Promise<string[]> => ipcRenderer.invoke("model:list"),
   deleteModel: (modelSize: string): Promise<void> => ipcRenderer.invoke("model:delete", modelSize),
+
+  onModelDownloaded: (cb: (modelSize: string) => void): (() => void) => {
+    const handler = (_: Electron.IpcRendererEvent, size: string) => cb(size);
+    ipcRenderer.on("settings:model-downloaded", handler);
+    return () => ipcRenderer.removeListener("settings:model-downloaded", handler);
+  },
 };
 
 contextBridge.exposeInMainWorld("echo", api);

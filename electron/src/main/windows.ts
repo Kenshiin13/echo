@@ -27,28 +27,30 @@ export class WindowManager {
       return;
     }
     this.settingsWindow = new BrowserWindow({
-      width: 560,
-      height: 720,
-      minWidth: 480,
-      minHeight: 600,
+      width: 820,
+      height: 620,
+      minWidth: 680,
+      minHeight: 520,
       resizable: true,
       title: "Echo",
       backgroundColor: "#0B1220",
       show: false,
-      ...(process.platform === "win32"
-        ? { icon: assetPath("echo_windows_multi_size.ico") }
-        : process.platform === "darwin"
-        ? {}
-        : { icon: assetPath("echo_executable_256.png") }),
+      icon: assetPath("echo_windows_multi_size.ico"),
+      // Hide the native title bar but keep Windows' native min/max/close
+      // buttons via titleBarOverlay, themed to our dark background. Avoids
+      // shipping a custom X button.
+      titleBarStyle: "hidden",
+      titleBarOverlay: {
+        color: "#0B1220",
+        symbolColor: "#E8EDF5",
+        height: 36,
+      },
       webPreferences: {
         preload: PRELOAD,
         contextIsolation: true,
         nodeIntegration: false,
         sandbox: false,
       },
-      ...(process.platform === "darwin"
-        ? { titleBarStyle: "hiddenInset", trafficLightPosition: { x: 16, y: 16 } }
-        : { frame: false }),
     });
 
     this.settingsWindow.loadFile(rendererPath("settings/index.html"));
@@ -136,6 +138,10 @@ export class WindowManager {
   sendDownloadProgress(percent: number): void {
     if (!this.indicatorReady) return;
     this.indicatorWindow?.webContents.send("indicator:download-progress", percent);
+  }
+
+  notifyModelDownloaded(modelSize: string): void {
+    this.settingsWindow?.webContents.send("settings:model-downloaded", modelSize);
   }
 
   updateIndicator(state: IndicatorState): void {

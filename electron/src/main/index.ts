@@ -143,7 +143,7 @@ async function main() {
 
   // Download selected model if missing before enabling the hotkey
   const selectedModel = config.get().modelSize;
-  if (!modelExists(selectedModel)) {
+  if (selectedModel && !modelExists(selectedModel)) {
     log.info(`Model ggml-${selectedModel}.bin not found — downloading…`);
     windows.updateIndicator("downloading");
     try {
@@ -158,10 +158,13 @@ async function main() {
   }
 
   // Preload the Whisper model into the persistent server subprocess so the
-  // first transcription doesn't pay a cold model-load cost.
-  transcriber.ensureStarted().catch((err) => {
-    log.error("Initial whisper-server start failed:", err);
-  });
+  // first transcription doesn't pay a cold model-load cost. Skipped if the
+  // user has no model selected — they'll pick one from Settings.
+  if (selectedModel) {
+    transcriber.ensureStarted().catch((err) => {
+      log.error("Initial whisper-server start failed:", err);
+    });
+  }
 
   const boot = config.get();
   log.info(`Boot config: voiceActivation=${boot.voiceActivation}, hotkey=${boot.hotkey}, model=${boot.modelSize}`);

@@ -5,7 +5,9 @@ export type IndicatorState = "idle" | "recording" | "transcribing" | "done" | "e
 export interface Config {
   hotkey: string;
   exitKey: string;
-  modelSize: ModelSize;
+  /** null when the user has deleted all models — transcription is disabled until
+   *  they pick and download one. */
+  modelSize: ModelSize | null;
   language: string | null;
   backend: Backend;
   autoPaste: boolean;

@@ -45,6 +45,9 @@ export class Transcriber {
 
   async transcribe(pcmBuffer: Buffer): Promise<void> {
     if (this.busy) throw new Error("Transcriber busy");
+    if (!this.config.get().modelSize) {
+      throw new Error("No model selected — open Settings and download one.");
+    }
     if (!this.server) {
       await this.ensureStarted();
     }
@@ -114,7 +117,9 @@ export class Transcriber {
   }
 
   private resolveModelFile(): string {
-    const wanted = getModelPath(this.config.get().modelSize);
+    const size = this.config.get().modelSize;
+    if (!size) throw new Error("No model selected");
+    const wanted = getModelPath(size);
     if (fs.existsSync(wanted)) return wanted;
 
     const modelsDir = path.join(getWhisperCppDir(), "models");

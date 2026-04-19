@@ -48,7 +48,7 @@ export class TrayManager {
     const cfg = this.config.get();
 
     const menu = Menu.buildFromTemplate([
-      { label: `Echo (${cfg.modelSize})`, enabled: false },
+      { label: `Echo (${cfg.modelSize ?? "no model"})`, enabled: false },
       { label: `Hotkey: ${cfg.hotkey.toUpperCase()}`, enabled: false },
       { label: `Backend: ${cfg.backend.toUpperCase()}`, enabled: false },
       { type: "separator" },

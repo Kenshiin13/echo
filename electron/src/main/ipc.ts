@@ -57,13 +57,19 @@ export function setupIpc(
       // are per-request params and pick up on the next transcription.
       if (prev.modelSize !== newConfig.modelSize) {
         const size = newConfig.modelSize;
-        (async () => {
+        // null = user deleted all models. Tear the server down; next non-null
+        // switch (or app restart) will spin it back up with a downloaded model.
+        if (!size) {
+          transcriber.destroy();
+          log.info("Model cleared — whisper-server stopped");
+        } else (async () => {
           if (!modelExists(size)) {
             log.info(`Model ${size} not cached — downloading…`);
             windows.updateIndicator("downloading");
             try {
               await downloadModel(size, (pct) => windows.sendDownloadProgress(pct));
               log.info(`Model ${size} ready`);
+              windows.notifyModelDownloaded(size);
             } catch (err) {
               log.error(`Model ${size} download failed:`, err);
               windows.updateIndicator("error");
@@ -92,7 +98,16 @@ export function setupIpc(
   ipcMain.on("audio:level", (_e, rms: number) => windows.sendLevelToIndicator(rms));
 
   ipcMain.handle("model:list", () => listDownloadedModels());
-  ipcMain.handle("model:delete", (_e, modelSize: string) => { deleteModel(modelSize); });
+  ipcMain.handle("model:delete", async (_e, modelSize: string) => {
+    // Whisper-server holds the loaded .bin file in memory (and open on Windows).
+    // If we're deleting the currently-active model, tear the subprocess down
+    // first — otherwise transcription keeps working from the in-memory copy
+    // and the file delete can fail on Windows.
+    if (config.get().modelSize === modelSize) {
+      transcriber.destroy();
+    }
+    deleteModel(modelSize);
+  });
 
   ipcMain.on("app:restart", () => {
     app.relaunch();
