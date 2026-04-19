@@ -22,6 +22,11 @@ export class WhisperServer {
 
   constructor(private opts: WhisperServerOptions) {}
 
+  /** Path of the model this server instance was spawned against. */
+  get modelPath(): string {
+    return this.opts.modelPath;
+  }
+
   start(): Promise<void> {
     if (this.readyPromise) return this.readyPromise;
     this.readyPromise = this.doStart();
@@ -91,7 +96,17 @@ export class WhisperServer {
     form.append("response_format", "verbose_json");
     form.append("temperature", "0.0");
     if (language) form.append("language", language);
-    if (prompt.trim()) form.append("prompt", prompt.trim());
+    const trimmedPrompt = prompt.trim();
+    if (trimmedPrompt) form.append("prompt", trimmedPrompt);
+
+    // Log exactly what's being POSTed so we can verify the prompt is on the
+    // wire (not just in config) and which model the running server is loaded
+    // with. If this shows the expected prompt + model and Whisper still
+    // ignores the prompt intent, that's a Whisper-model behaviour, not us.
+    const promptPart = trimmedPrompt
+      ? ` prompt="${trimmedPrompt.slice(0, 60)}${trimmedPrompt.length > 60 ? "…" : ""}" (${trimmedPrompt.length} chars)`
+      : " prompt=(none)";
+    log.info(`[whisper-server] POST /inference model=${path.basename(this.opts.modelPath)} language=${language ?? "auto"}${promptPart}`);
 
     const res = await fetch(`http://127.0.0.1:${this.port}/inference`, {
       method: "POST",

@@ -8,7 +8,7 @@ import { RecordingSession } from "./recorder";
 import { Transcriber } from "./transcriber";
 import { SystemInfo } from "../shared/types";
 import { log } from "./logger";
-import { listDownloadedModels, deleteModel } from "./model-downloader";
+import { listDownloadedModels, deleteModel, modelExists, downloadModel } from "./model-downloader";
 
 export function setupIpc(
   config: ConfigStore,
@@ -52,14 +52,32 @@ export function setupIpc(
         }
       }
 
-      // Model size changed — respawn whisper-server with the new model
-      // rather than requiring the user to restart the whole app. Language
-      // and prompt are per-request params and pick up immediately without
-      // any reload.
+      // Model size changed — download it if missing, then respawn
+      // whisper-server. No full-app restart needed. Language and prompt
+      // are per-request params and pick up on the next transcription.
       if (prev.modelSize !== newConfig.modelSize) {
-        transcriber.reload().catch((err) => {
-          log.error("Failed to reload whisper-server after model change:", err);
-        });
+        const size = newConfig.modelSize;
+        (async () => {
+          if (!modelExists(size)) {
+            log.info(`Model ${size} not cached — downloading…`);
+            windows.updateIndicator("downloading");
+            try {
+              await downloadModel(size, (pct) => windows.sendDownloadProgress(pct));
+              log.info(`Model ${size} ready`);
+            } catch (err) {
+              log.error(`Model ${size} download failed:`, err);
+              windows.updateIndicator("error");
+              setTimeout(() => windows.updateIndicator("idle"), 3000);
+              return;
+            }
+          }
+          try {
+            await transcriber.reload();
+            windows.updateIndicator("idle");
+          } catch (err) {
+            log.error("Failed to reload whisper-server after model change:", err);
+          }
+        })();
       }
 
       log.info("Config saved:", JSON.stringify(newConfig));

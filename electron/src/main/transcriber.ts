@@ -53,6 +53,15 @@ export class Transcriber {
     try {
       const wav = wrapPcmAsWav(pcmBuffer);
       const cfg = this.config.get();
+      // Flag if whisper-server is running a different model than config asks
+      // for (e.g. if the last reload() failed). whisper-server.ts logs the
+      // actual model + prompt + language at the send site, so we only need
+      // to surface the mismatch here.
+      const activeModel = path.basename(this.server!.modelPath);
+      const configuredModel = `ggml-${cfg.modelSize}.bin`;
+      if (activeModel !== configuredModel) {
+        log.warn(`[transcribe] active model (${activeModel}) does not match config (${configuredModel}) — last reload likely failed`);
+      }
       const { text, language } = await this.server!.transcribe(wav, cfg.language, cfg.prompt);
 
       const final = await this.maybeTranslate(text, language);

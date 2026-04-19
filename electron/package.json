@@ -1,6 +1,6 @@
 {
   "name": "echo",
-  "version": "2.0.1",
+  "version": "2.1.0",
   "description": "Local push-to-talk voice-to-text for Windows",
   "main": "dist/main/main/index.js",
   "author": "Kenshiin13",
@@ -10,7 +10,7 @@
   },
   "private": true,
   "scripts": {
-    "dev": "npm run build && concurrently -k -n MAIN,SETTINGS,INDICATOR,AUDIO,ELECTRON \"tsc -p tsconfig.main.json --watch --preserveWatchOutput\" \"vite build --watch --config vite.settings.config.ts\" \"vite build --watch --config vite.indicator.config.ts\" \"vite build --watch --config vite.audio-capture.config.ts\" \"electron .\"",
+    "dev": "npm run build && concurrently -k -n MAIN,SETTINGS,INDICATOR,AUDIO,ELECTRON \"tsc -p tsconfig.main.json --watch --preserveWatchOutput\" \"vite build --watch --config vite.settings.config.ts\" \"vite build --watch --config vite.indicator.config.ts\" \"vite build --watch --config vite.audio-capture.config.ts\" \"electronmon .\"",
     "clean": "node -e \"require('fs').rmSync('dist', { recursive: true, force: true })\"",
     "build": "npm run clean && npm run build:renderer && npm run build:main",
     "build:renderer": "vite build --config vite.settings.config.ts && vite build --config vite.indicator.config.ts && vite build --config vite.audio-capture.config.ts",
@@ -40,6 +40,7 @@
     "concurrently": "^9.1.2",
     "electron": "^33.4.11",
     "electron-builder": "^25.1.8",
+    "electronmon": "^2.0.4",
     "postcss": "^8.4.47",
     "tailwindcss": "^3.4.17",
     "typescript": "^5.7.3",
@@ -48,5 +49,11 @@
   },
   "build": {
     "extends": "./electron-builder.config.js"
+  },
+  "electronmon": {
+    "patterns": [
+      "dist/main/**/*",
+      "dist/preload/**/*"
+    ]
   }
 }

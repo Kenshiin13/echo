@@ -314,28 +314,36 @@ export function App() {
                 label={
                   <Group gap={4} wrap="nowrap">
                     <Text size="sm" fw={500}>Initial prompt (optional)</Text>
-                    <HoverCard width={320} shadow="md" withArrow openDelay={100} closeDelay={200}>
+                    <HoverCard width={340} shadow="md" withArrow openDelay={100} closeDelay={200}>
                       <HoverCard.Target>
                         <IconInfoCircle size={13} style={{ cursor: "help", color: "var(--muted)" }} />
                       </HoverCard.Target>
                       <HoverCard.Dropdown>
                         <Text size="xs">
-                          Whisper sees this text as the end of an imagined previous sentence, which
-                          biases spelling, punctuation, and style. Useful for forcing custom jargon,
-                          product names, or a particular voice. Limit: ~224 tokens.
+                          Whisper treats this as a <b>fake previous transcript</b> and continues in
+                          the same style — it doesn't follow instructions. Only the <i>shape</i> of
+                          your prompt matters (capitalization, punctuation, tone), not its meaning.
+                          Limit: ~224 tokens.
                         </Text>
                         <Text size="xs" mt={6} c="dimmed">
-                          Examples:
-                          <br />• <i>"Use proper punctuation and capitalization."</i>
-                          <br />• <i>"Kubernetes, Postgres, TanStack, tRPC."</i>
-                          <br />• <i>"no punctuation, all lowercase, casual"</i>
+                          ✅ Works — custom vocabulary:
+                          <br /><i>"Kubernetes, Postgres, TanStack, tRPC, Anthropic"</i>
+                        </Text>
+                        <Text size="xs" mt={4} c="dimmed">
+                          ✅ Works — lowercase/no punctuation (make the prompt LOOK that way):
+                          <br /><i>"so yeah i was thinking we could maybe try it"</i>
+                        </Text>
+                        <Text size="xs" mt={4} c="dimmed">
+                          ❌ Doesn't work — instructions written as English sentences:
+                          <br /><i>"No punctuation. Casual. All lowercase."</i>
+                          <br />Whisper sees the period + capital N and keeps punctuating.
                         </Text>
                       </HoverCard.Dropdown>
                     </HoverCard>
                   </Group>
                 }
-                description="Applied on every transcription. Changes take effect immediately — no restart."
-                placeholder="e.g. Use proper punctuation and capitalization."
+                description="Sent on every transcription. Changes apply immediately — no restart."
+                placeholder="e.g. Kubernetes, Postgres, TanStack, tRPC"
                 value={config.prompt}
                 onChange={(e) => patch("prompt", e.currentTarget.value)}
                 autosize
