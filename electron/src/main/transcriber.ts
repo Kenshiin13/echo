@@ -6,6 +6,7 @@ import { log } from "./logger";
 import { getModelPath, getWhisperCppDir } from "./model-downloader";
 import { WhisperServer } from "./whisper-server";
 import { translateViaDeepL } from "./deepl";
+import { applyReplacements } from "./replacements";
 
 type DoneCallback = (text: string) => void;
 
@@ -64,7 +65,11 @@ export class Transcriber {
       }
       const { text, language } = await this.server!.transcribe(wav, cfg.language, cfg.prompt);
 
-      const final = await this.maybeTranslate(text, language);
+      const translated = await this.maybeTranslate(text, language);
+      const final = applyReplacements(translated, cfg.replacements);
+      if (final !== translated) {
+        log.info(`[transcribe] applied ${cfg.replacements.length} find/replace rule(s)`);
+      }
       this.onDone(final);
     } finally {
       this.busy = false;

@@ -3,14 +3,15 @@ import {
   Stack, Group, Text, Button, Select, Switch,
   Badge, Loader, Alert, Box, ScrollArea, ActionIcon,
   PasswordInput, HoverCard, Anchor, Modal, Textarea,
+  TextInput,
 } from "@mantine/core";
 import {
   IconAlertCircle, IconCheck, IconRefresh,
   IconMicrophone, IconCpu, IconBrain,
   IconBolt, IconInfoCircle, IconX, IconTrash,
-  IconLanguage, IconCloudUpload,
+  IconLanguage, IconCloudUpload, IconReplace, IconPlus,
 } from "@tabler/icons-react";
-import type { Config, SystemInfo } from "@shared/types";
+import type { Config, SystemInfo, Replacement } from "@shared/types";
 import { SectionLabel } from "./components/SectionLabel";
 import { KeybindInput } from "./components/KeybindInput";
 
@@ -350,6 +351,79 @@ export function App() {
                 minRows={2}
                 maxRows={5}
               />
+            </Stack>
+          </Card>
+
+          {/* Find & Replace */}
+          <Card delay={85}>
+            <Stack gap={14}>
+              <Group gap={8}>
+                <IconReplace size={14} color="var(--accent)" />
+                <SectionLabel>Find &amp; Replace</SectionLabel>
+              </Group>
+              <Text size="xs" c="dimmed">
+                Applied to every transcript after Whisper and any translation, before paste.
+                Case-insensitive, run in order. Use <code>\n</code> in the replacement to
+                insert a newline.
+              </Text>
+              {config.replacements.length > 0 && (
+                <Stack gap={6}>
+                  {config.replacements.map((rule, i) => (
+                    <Group key={i} gap={6} wrap="nowrap" align="center">
+                      <TextInput
+                        placeholder="find"
+                        value={rule.from}
+                        onChange={(e) => {
+                          const next: Replacement[] = config.replacements.map((r, j) =>
+                            j === i ? { ...r, from: e.currentTarget.value } : r,
+                          );
+                          patch("replacements", next);
+                        }}
+                        style={{ flex: 1 }}
+                        size="xs"
+                      />
+                      <Text size="sm" c="dimmed">→</Text>
+                      <TextInput
+                        placeholder="replace with"
+                        value={rule.to}
+                        onChange={(e) => {
+                          const next: Replacement[] = config.replacements.map((r, j) =>
+                            j === i ? { ...r, to: e.currentTarget.value } : r,
+                          );
+                          patch("replacements", next);
+                        }}
+                        style={{ flex: 1 }}
+                        size="xs"
+                      />
+                      <ActionIcon
+                        variant="subtle"
+                        color="red"
+                        size={24}
+                        radius="sm"
+                        onClick={() => {
+                          const next = config.replacements.filter((_, j) => j !== i);
+                          patch("replacements", next);
+                        }}
+                        aria-label="Remove rule"
+                      >
+                        <IconX size={13} />
+                      </ActionIcon>
+                    </Group>
+                  ))}
+                </Stack>
+              )}
+              <Button
+                variant="light"
+                color="echo"
+                size="xs"
+                leftSection={<IconPlus size={13} />}
+                onClick={() =>
+                  patch("replacements", [...config.replacements, { from: "", to: "" }])
+                }
+                style={{ alignSelf: "flex-start" }}
+              >
+                Add rule
+              </Button>
             </Stack>
           </Card>
 

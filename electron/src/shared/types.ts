@@ -18,7 +18,16 @@ export interface Config {
   /** Optional initial prompt passed to Whisper as context before each
    *  transcription. Biases spelling, style, punctuation, custom vocabulary. */
   prompt: string;
+  /** User-editable find/replace rules applied to every transcript after
+   *  Whisper + optional DeepL translation, before paste. Case-insensitive,
+   *  applied in order. Use `\n` in the replacement for a newline. */
+  replacements: Replacement[];
   indicatorHideDelayMs: number;
+}
+
+export interface Replacement {
+  from: string;
+  to: string;
 }
 
 export const DEFAULT_CONFIG: Config = {
@@ -33,6 +42,7 @@ export const DEFAULT_CONFIG: Config = {
   translateTo: null,
   deeplApiKey: "",
   prompt: "",
+  replacements: [],
   indicatorHideDelayMs: 1200,
 };
 

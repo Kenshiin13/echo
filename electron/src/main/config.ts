@@ -25,6 +25,7 @@ export class ConfigStore {
       translateTo: this.store.get("translateTo"),
       deeplApiKey: this.store.get("deeplApiKey"),
       prompt: this.store.get("prompt"),
+      replacements: this.store.get("replacements"),
       indicatorHideDelayMs: this.store.get("indicatorHideDelayMs"),
     };
   }
