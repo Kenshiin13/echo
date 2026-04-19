@@ -12,6 +12,7 @@ import { PasteManager } from "./paste";
 import { AutostartManager } from "./autostart";
 import { SingleInstance } from "./single-instance";
 import { setupIpc } from "./ipc";
+import { UpdaterManager } from "./updater";
 import { getSystemInfo } from "./system-info";
 import { log } from "./logger";
 import { modelExists, downloadModel, binaryMatchesBackend, downloadBinary, restorePreservedModels } from "./model-downloader";
@@ -119,7 +120,9 @@ async function main() {
   );
 
   const tray = new TrayManager(config, windows);
-  setupIpc(config, sysInfo, windows, tray, hotkey, autostart, session, transcriber);
+  const updater = new UpdaterManager(windows);
+  setupIpc(config, sysInfo, windows, tray, hotkey, autostart, session, transcriber, updater);
+  updater.scheduleBootCheck();
 
   tray.create();
 

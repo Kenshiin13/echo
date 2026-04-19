@@ -1,4 +1,4 @@
-import { BrowserWindow, screen, app } from "electron";
+import { BrowserWindow, screen, app, shell } from "electron";
 import path from "path";
 
 function assetPath(name: string): string {
@@ -54,6 +54,15 @@ export class WindowManager {
     });
 
     this.settingsWindow.loadFile(rendererPath("settings/index.html"));
+
+    // Route target="_blank" / window.open to the user's default browser
+    // instead of Electron spawning its own Chromium popup.
+    this.settingsWindow.webContents.setWindowOpenHandler(({ url }) => {
+      if (url.startsWith("http://") || url.startsWith("https://")) {
+        shell.openExternal(url);
+      }
+      return { action: "deny" };
+    });
 
     this.settingsWindow.once("ready-to-show", () => {
       this.settingsWindow?.show();
@@ -142,6 +151,10 @@ export class WindowManager {
 
   notifyModelDownloaded(modelSize: string): void {
     this.settingsWindow?.webContents.send("settings:model-downloaded", modelSize);
+  }
+
+  notifyUpdateState(state: unknown): void {
+    this.settingsWindow?.webContents.send("updates:state", state);
   }
 
   updateIndicator(state: IndicatorState): void {

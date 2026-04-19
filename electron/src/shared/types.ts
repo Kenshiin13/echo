@@ -60,6 +60,23 @@ export interface SystemInfo {
   assetsUrl: string; // file:// URL for the assets directory
 }
 
+export type UpdateState =
+  | { phase: "idle" }
+  | { phase: "checking" }
+  | { phase: "not-available"; checkedAt: number }
+  | { phase: "available"; version: string }
+  | { phase: "downloading"; percent: number; version: string }
+  | { phase: "downloaded"; version: string }
+  | { phase: "error"; message: string };
+
+export interface GitHubRelease {
+  tagName: string;
+  name: string;
+  publishedAt: string;
+  body: string;
+  htmlUrl: string;
+}
+
 export type IpcChannels = {
   // main → renderer
   "indicator:state": IndicatorState;

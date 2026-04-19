@@ -9,6 +9,7 @@ import { Transcriber } from "./transcriber";
 import { SystemInfo } from "../shared/types";
 import { log } from "./logger";
 import { listDownloadedModels, deleteModel, modelExists, downloadModel } from "./model-downloader";
+import { UpdaterManager } from "./updater";
 
 export function setupIpc(
   config: ConfigStore,
@@ -19,6 +20,7 @@ export function setupIpc(
   autostart: AutostartManager,
   session: RecordingSession,
   transcriber: Transcriber,
+  updater: UpdaterManager,
 ): void {
   ipcMain.handle("settings:get-config", () => config.get());
   ipcMain.handle("settings:get-system-info", () => sysInfo);
@@ -122,4 +124,8 @@ export function setupIpc(
     app.relaunch();
     app.quit();
   });
+
+  ipcMain.handle("updates:get-state", () => updater.getState());
+  ipcMain.handle("updates:check", () => updater.check());
+  ipcMain.handle("updates:install", () => updater.quitAndInstall());
 }

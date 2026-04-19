@@ -45,7 +45,12 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: echo-windows-x64
-          path: dist/electron-release/*.exe
+          # electron-updater needs latest.yml and the .blockmap alongside the
+          # installer. Without them, the auto-update feed 404s.
+          path: |
+            dist/electron-release/*.exe
+            dist/electron-release/latest.yml
+            dist/electron-release/*.blockmap
           if-no-files-found: error
           retention-days: 14
 

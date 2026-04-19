@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from "electron";
-import type { Config, SystemInfo, IndicatorState } from "../shared/types";
+import type { Config, SystemInfo, IndicatorState, UpdateState } from "../shared/types";
 
 const api = {
   // Settings window
@@ -76,6 +76,16 @@ const api = {
     const handler = (_: Electron.IpcRendererEvent, size: string) => cb(size);
     ipcRenderer.on("settings:model-downloaded", handler);
     return () => ipcRenderer.removeListener("settings:model-downloaded", handler);
+  },
+
+  // Auto-updater
+  getUpdateState: (): Promise<UpdateState> => ipcRenderer.invoke("updates:get-state"),
+  checkForUpdates: (): Promise<void> => ipcRenderer.invoke("updates:check"),
+  installUpdate: (): Promise<void> => ipcRenderer.invoke("updates:install"),
+  onUpdateState: (cb: (state: UpdateState) => void): (() => void) => {
+    const handler = (_: Electron.IpcRendererEvent, state: UpdateState) => cb(state);
+    ipcRenderer.on("updates:state", handler);
+    return () => ipcRenderer.removeListener("updates:state", handler);
   },
 };
 

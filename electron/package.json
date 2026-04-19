@@ -1,6 +1,6 @@
 {
   "name": "echo",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "description": "Local push-to-talk voice-to-text for Windows",
   "main": "dist/main/main/index.js",
   "author": "Kenshiin13",
@@ -26,6 +26,7 @@
     "@ricky0123/vad-web": "^0.0.30",
     "@tabler/icons-react": "^3.31.0",
     "electron-store": "^8.2.0",
+    "electron-updater": "^6.8.3",
     "koffi": "^2.16.0",
     "nodejs-whisper": "^0.1.17",
     "react": "^18.3.1",
