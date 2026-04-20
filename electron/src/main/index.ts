@@ -14,6 +14,8 @@ import { SingleInstance } from "./single-instance";
 import { setupIpc } from "./ipc";
 import { UpdaterManager } from "./updater";
 import { HistoryStore } from "./history";
+import { findHwndForTarget } from "./window-picker";
+import { SmartTargetStore } from "./smart-target";
 import { getSystemInfo } from "./system-info";
 import { log } from "./logger";
 import { modelExists, downloadModel, binaryMatchesBackend, downloadBinary, restorePreservedModels } from "./model-downloader";
@@ -63,6 +65,7 @@ async function main() {
 
   const config = new ConfigStore();
   const sysInfo = await getSystemInfo();
+  const smartTarget = new SmartTargetStore();
 
   // On first run, default the backend to whatever the hardware recommends
   if (config.isFirstRun() && sysInfo.recommendedBackend !== "cpu") {
@@ -84,19 +87,30 @@ async function main() {
 
     windows.updateIndicator("done");
 
-    if (config.get().autoPaste) {
-      paste.pasteText(text).catch((err) => log.error("pasteText failed:", err));
+    const cfg = config.get();
+    if (cfg.autoPaste) {
+      (async () => {
+        const target = smartTarget.get();
+        const hwnd = target ? await findHwndForTarget(target) : null;
+        const opts = { autoSubmit: cfg.smartAutoSubmit };
+        if (hwnd) {
+          await paste.pasteToHwnd(hwnd, text, opts);
+        } else {
+          if (target) log.info(`Smart target (pid=${target.pid}, title="${target.title}") not found — falling back to cursor paste`);
+          await paste.pasteText(text, opts);
+        }
+      })().catch((err) => log.error("paste failed:", err));
     } else {
       const { clipboard } = require("electron");
       clipboard.writeText(text);
     }
 
-    if (config.get().historyEnabled) {
+    if (cfg.historyEnabled) {
       history.add(text);
       windows.notifyHistoryUpdated();
     }
 
-    setTimeout(() => windows.updateIndicator("idle"), config.get().indicatorHideDelayMs);
+    setTimeout(() => windows.updateIndicator("idle"), cfg.indicatorHideDelayMs);
   });
 
   const session = new RecordingSession(
@@ -128,7 +142,7 @@ async function main() {
 
   const tray = new TrayManager(config, windows);
   const updater = new UpdaterManager(windows);
-  setupIpc(config, sysInfo, windows, tray, hotkey, autostart, session, transcriber, updater, history);
+  setupIpc(config, sysInfo, windows, tray, hotkey, autostart, session, transcriber, updater, history, smartTarget);
   updater.scheduleBootCheck();
 
   tray.create();

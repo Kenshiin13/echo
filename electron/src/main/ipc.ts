@@ -11,6 +11,9 @@ import { log } from "./logger";
 import { listDownloadedModels, deleteModel, modelExists, downloadModel } from "./model-downloader";
 import { UpdaterManager } from "./updater";
 import { HistoryStore } from "./history";
+import { listOpenWindows } from "./window-picker";
+import { SmartTargetStore } from "./smart-target";
+import type { SmartTarget } from "../shared/types";
 
 export function setupIpc(
   config: ConfigStore,
@@ -23,6 +26,7 @@ export function setupIpc(
   transcriber: Transcriber,
   updater: UpdaterManager,
   history: HistoryStore,
+  smartTarget: SmartTargetStore,
 ): void {
   ipcMain.handle("settings:get-config", () => config.get());
   ipcMain.handle("settings:get-system-info", () => sysInfo);
@@ -134,4 +138,10 @@ export function setupIpc(
   ipcMain.handle("history:list", () => history.list());
   ipcMain.handle("history:delete", (_e, id: string) => history.remove(id));
   ipcMain.handle("history:clear", () => history.clear());
+
+  ipcMain.handle("smart:list-windows", () => listOpenWindows());
+  ipcMain.handle("smart:get-target", () => smartTarget.get());
+  ipcMain.handle("smart:set-target", (_e, target: SmartTarget | null) => {
+    smartTarget.set(target);
+  });
 }

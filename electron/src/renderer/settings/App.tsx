@@ -4,17 +4,18 @@ import {
   ScrollArea, Badge,
 } from "@mantine/core";
 import {
-  IconSettings, IconBrain, IconWand, IconHistory,
+  IconSettings, IconBrain, IconWand, IconHistory, IconTarget,
   IconInfoCircle, IconCheck, IconAlertCircle, IconRefresh,
 } from "@tabler/icons-react";
 import type { Config, SystemInfo } from "@shared/types";
 import { GeneralSection } from "./sections/GeneralSection";
 import { ModelSection } from "./sections/ModelSection";
 import { PostProcessingSection } from "./sections/PostProcessingSection";
+import { SmartTranscriptionSection } from "./sections/SmartTranscriptionSection";
 import { HistorySection } from "./sections/HistorySection";
 import { AboutSection } from "./sections/AboutSection";
 
-type SectionId = "general" | "model" | "post-processing" | "history" | "about";
+type SectionId = "general" | "model" | "post-processing" | "smart" | "history" | "about";
 
 interface NavItem {
   id: SectionId;
@@ -23,11 +24,12 @@ interface NavItem {
 }
 
 const NAV: NavItem[] = [
-  { id: "general",         label: "General",         icon: IconSettings },
-  { id: "model",           label: "Model",           icon: IconBrain },
-  { id: "post-processing", label: "Post-processing", icon: IconWand },
-  { id: "history",         label: "History",         icon: IconHistory },
-  { id: "about",           label: "About",           icon: IconInfoCircle },
+  { id: "general",         label: "General",              icon: IconSettings },
+  { id: "model",           label: "Model",                icon: IconBrain },
+  { id: "post-processing", label: "Post-processing",      icon: IconWand },
+  { id: "smart",           label: "Smart transcription",  icon: IconTarget },
+  { id: "history",         label: "History",              icon: IconHistory },
+  { id: "about",           label: "About",                icon: IconInfoCircle },
 ];
 
 function assetUrl(sysInfo: SystemInfo, name: string): string {
@@ -201,6 +203,9 @@ export function App() {
             )}
             {active === "post-processing" && (
               <PostProcessingSection config={config} patch={patch} />
+            )}
+            {active === "smart" && (
+              <SmartTranscriptionSection config={config} patch={patch} />
             )}
             {active === "history" && (
               <HistorySection config={config} patch={patch} />

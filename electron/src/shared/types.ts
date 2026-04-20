@@ -29,6 +29,18 @@ export interface Config {
   audioInputDeviceId: string | null;
   /** Keep a rolling log of transcripts for re-copy. Disable to stop saving. */
   historyEnabled: boolean;
+  /** Press Enter after pasting — useful for chat inputs (Claude, ChatGPT). */
+  smartAutoSubmit: boolean;
+}
+
+/** Volatile identity for the Smart-transcription target window.
+ *  Identified by PID so title changes (Chrome tab switch, Notepad edit) don't
+ *  invalidate the pin. Never persisted to disk — reset to null on every
+ *  app boot. */
+export interface SmartTarget {
+  pid: number;
+  /** Title captured when the user picked it — display + fallback matching. */
+  title: string;
 }
 
 export interface HistoryEntry {
@@ -58,6 +70,7 @@ export const DEFAULT_CONFIG: Config = {
   indicatorHideDelayMs: 1200,
   audioInputDeviceId: null,
   historyEnabled: true,
+  smartAutoSubmit: false,
 };
 
 export interface SystemInfo {

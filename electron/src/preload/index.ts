@@ -1,5 +1,10 @@
 import { contextBridge, ipcRenderer } from "electron";
-import type { Config, SystemInfo, IndicatorState, UpdateState, HistoryEntry } from "../shared/types";
+import type { Config, SystemInfo, IndicatorState, UpdateState, HistoryEntry, SmartTarget } from "../shared/types";
+
+export type SmartWindow = {
+  pid: number;
+  title: string;
+};
 
 const api = {
   // Settings window
@@ -97,6 +102,13 @@ const api = {
     ipcRenderer.on("history:updated", handler);
     return () => ipcRenderer.removeListener("history:updated", handler);
   },
+
+  // Smart-transcription: list Alt-Tab-visible windows and read/write the
+  // volatile target (PID + exe path; never persisted across restarts).
+  listSmartWindows: (): Promise<SmartWindow[]> => ipcRenderer.invoke("smart:list-windows"),
+  getSmartTarget: (): Promise<SmartTarget | null> => ipcRenderer.invoke("smart:get-target"),
+  setSmartTarget: (target: SmartTarget | null): Promise<void> =>
+    ipcRenderer.invoke("smart:set-target", target),
 };
 
 contextBridge.exposeInMainWorld("echo", api);

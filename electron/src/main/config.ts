@@ -29,6 +29,7 @@ export class ConfigStore {
       indicatorHideDelayMs: this.store.get("indicatorHideDelayMs"),
       audioInputDeviceId: this.store.get("audioInputDeviceId"),
       historyEnabled: this.store.get("historyEnabled"),
+      smartAutoSubmit: this.store.get("smartAutoSubmit"),
     };
   }
 
