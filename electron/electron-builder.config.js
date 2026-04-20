@@ -73,5 +73,14 @@ module.exports = {
     createDesktopShortcut: true,
     createStartMenuShortcut: true,
     include: "build-resources/installer.nsh",
+    // electron-builder's default artifact name has spaces ("Echo Setup
+    // 2.3.0.exe"), which GitHub's uploader silently rewrites to dots
+    // ("Echo.Setup.2.3.0.exe") while electron-builder writes `latest.yml`
+    // with hyphens. The filename mismatch makes electron-updater's feed
+    // point to a non-existent asset, and the "Check for updates" call
+    // silently resolves to not-available. Forcing hyphens everywhere keeps
+    // the installer name, the yml's `path` field, and the release asset
+    // all in agreement.
+    artifactName: "${productName}-Setup-${version}.${ext}",
   },
 };
