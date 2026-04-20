@@ -139,4 +139,4 @@ Pushing a `v*` tag runs the [release workflow](.github/workflows/release.yml) an
 
 ## License
 
-MIT
+This project is licensed under the GNU GPL v3.0 - see the LICENSE file for details.
