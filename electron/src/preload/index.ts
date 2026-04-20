@@ -109,6 +109,11 @@ const api = {
   getSmartTarget: (): Promise<SmartTarget | null> => ipcRenderer.invoke("smart:get-target"),
   setSmartTarget: (target: SmartTarget | null): Promise<void> =>
     ipcRenderer.invoke("smart:set-target", target),
+  onSmartTargetChanged: (cb: (target: SmartTarget | null) => void): (() => void) => {
+    const handler = (_: Electron.IpcRendererEvent, target: SmartTarget | null) => cb(target);
+    ipcRenderer.on("smart:target-changed", handler);
+    return () => ipcRenderer.removeListener("smart:target-changed", handler);
+  },
 };
 
 contextBridge.exposeInMainWorld("echo", api);

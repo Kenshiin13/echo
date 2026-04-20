@@ -41,10 +41,16 @@ export function AboutSection({ sysInfo }: Props) {
       .catch((err) => setReleasesError(err.message));
   }, []);
 
+  const logoUrl = `${sysInfo.assetsUrl}/echo_header_top_left_256x96.png`;
+
   return (
     <Stack gap="lg">
-      <Stack gap={4}>
-        <Text size="sm" fw={500}>Echo</Text>
+      <Stack gap={6}>
+        <img
+          src={logoUrl}
+          alt="Echo"
+          style={{ height: 38, width: "auto", objectFit: "contain", alignSelf: "flex-start" }}
+        />
         <Text size="xs" c="dimmed">Local push-to-talk voice-to-text for Windows.</Text>
       </Stack>
 
@@ -133,21 +139,20 @@ function UpdateStatus({ state }: { state: UpdateState }) {
   }
   if (state.phase === "not-available") {
     return (
-      <Group justify="space-between" wrap="nowrap">
-        <Group gap={6}>
-          <IconCheck size={14} color="var(--mantine-color-green-5)" />
-          <Text size="xs" c="dimmed">You're on the latest version.</Text>
+      <Alert icon={<IconCheck size={14} />} color="green" variant="light" radius="md" p="xs">
+        <Group justify="space-between" wrap="nowrap">
+          <Text size="xs">You're on the latest version.</Text>
+          <Button
+            size="xs"
+            variant="subtle"
+            color="green"
+            leftSection={<IconRefresh size={12} />}
+            onClick={() => window.echo.checkForUpdates()}
+          >
+            Check again
+          </Button>
         </Group>
-        <Button
-          size="xs"
-          variant="subtle"
-          color="echo"
-          leftSection={<IconRefresh size={12} />}
-          onClick={() => window.echo.checkForUpdates()}
-        >
-          Check again
-        </Button>
-      </Group>
+      </Alert>
     );
   }
   if (state.phase === "available") {

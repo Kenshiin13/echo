@@ -14,7 +14,7 @@ import { SingleInstance } from "./single-instance";
 import { setupIpc } from "./ipc";
 import { UpdaterManager } from "./updater";
 import { HistoryStore } from "./history";
-import { findHwndForTarget } from "./window-picker";
+import { findHwndForTarget, isPidAlive, getForegroundHwnd } from "./window-picker";
 import { SmartTargetStore } from "./smart-target";
 import { getSystemInfo } from "./system-info";
 import { log } from "./logger";
@@ -91,12 +91,33 @@ async function main() {
     if (cfg.autoPaste) {
       (async () => {
         const target = smartTarget.get();
+        // Capture what the user was actually on BEFORE resolution — the
+        // nut-js fallback path focuses the target as a side effect to recover
+        // its HWND, which would otherwise poison our "restore focus after
+        // paste" logic.
+        const previouslyFocused = target ? getForegroundHwnd() : 0n;
         const hwnd = target ? await findHwndForTarget(target) : null;
-        const opts = { autoSubmit: cfg.smartAutoSubmit };
+        const opts = {
+          autoSubmit: cfg.smartAutoSubmit,
+          previouslyFocused,
+        };
         if (hwnd) {
           await paste.pasteToHwnd(hwnd, text, opts);
+        } else if (target) {
+          // No HWND found. Distinguish two cases by looking at the process:
+          //   - Process dead → pin will never resolve again; clear it.
+          //   - Process alive → window is hidden/on-another-desktop/etc.
+          //     Keep the pin so it resolves again next paste, and surface a
+          //     cursor-paste for now.
+          if (isPidAlive(target.pid)) {
+            log.info(`Smart target pid=${target.pid} alive but no focusable window — cursor paste`);
+          } else {
+            log.info(`Smart target pid=${target.pid} process gone — clearing pin`);
+            smartTarget.set(null);
+            windows.notifySmartTargetChanged(null);
+          }
+          await paste.pasteText(text, opts);
         } else {
-          if (target) log.info(`Smart target (pid=${target.pid}, title="${target.title}") not found — falling back to cursor paste`);
           await paste.pasteText(text, opts);
         }
       })().catch((err) => log.error("paste failed:", err));

@@ -58,12 +58,28 @@ export class UpdaterManager {
   }
 
   async check(): Promise<void> {
-    if (!app.isPackaged) return;
+    if (!app.isPackaged) {
+      // Dev builds can't verify updates against themselves — pretend we're
+      // on the latest version so the UI reflects the click at least.
+      this.setState({ phase: "not-available", checkedAt: Date.now() });
+      return;
+    }
+    // Watchdog: if autoUpdater silently stalls (DNS, cert, feed 404), don't
+    // let the UI sit on "Checking…" forever. electron-updater sometimes eats
+    // errors without emitting anything.
+    const watchdog = setTimeout(() => {
+      if (this.state.phase === "checking") {
+        log.warn("Update check timed out after 20s");
+        this.setState({ phase: "error", message: "Update check timed out." });
+      }
+    }, 20_000);
     try {
       await autoUpdater.checkForUpdates();
     } catch (err) {
       log.error("Update check failed:", err);
       this.setState({ phase: "error", message: String(err) });
+    } finally {
+      clearTimeout(watchdog);
     }
   }
 

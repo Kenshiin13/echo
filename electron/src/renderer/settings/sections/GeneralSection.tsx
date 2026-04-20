@@ -1,4 +1,4 @@
-import { Stack, Switch, Divider, Group, Text, Select } from "@mantine/core";
+import { Stack, Switch, Group, Text, Select } from "@mantine/core";
 import { useEffect, useState } from "react";
 import type { Config } from "@shared/types";
 import { KeybindInput } from "../components/KeybindInput";
@@ -37,7 +37,6 @@ async function listAudioInputs(): Promise<{ id: string; label: string }[]> {
   } catch (err) {
     console.warn("enumerateDevices failed:", err);
   }
-  // Guard against any lingering duplicate deviceIds from pseudo-device aliases.
   const seen = new Set<string>();
   return devices
     .map((d) => ({ id: d.deviceId, label: d.label || "Microphone" }))
@@ -82,34 +81,9 @@ export function GeneralSection({ config, patch }: Props) {
         ]}
       />
       <Switch
-        label="Auto-paste transcript"
-        description="Off = clipboard only."
-        checked={config.autoPaste}
-        onChange={(e) => patch("autoPaste", e.currentTarget.checked)}
-        color="echo"
-      />
-      <Switch
         label="Start at login"
         checked={config.autostart}
         onChange={(e) => patch("autostart", e.currentTarget.checked)}
-        color="echo"
-      />
-
-      <Divider />
-
-      <Switch
-        label={
-          <Group gap={4} wrap="nowrap">
-            <Text size="sm" fw={500}>Voice activation</Text>
-            <InfoHint>
-              Hands-free mode using Silero VAD. Disables the push-to-talk hotkey and
-              keeps the microphone live, transcribing whenever speech is detected.
-              Toggles without a restart.
-            </InfoHint>
-          </Group>
-        }
-        checked={config.voiceActivation}
-        onChange={(e) => patch("voiceActivation", e.currentTarget.checked)}
         color="echo"
       />
     </Stack>

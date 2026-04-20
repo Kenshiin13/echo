@@ -1,16 +1,22 @@
 import { clipboard } from "electron";
 import { keyboard, Key } from "@nut-tree-fork/nut-js";
 import { log } from "./logger";
-import { focusHwnd } from "./window-picker";
+import { focusHwnd, getForegroundHwnd, isHwndIconic, minimizeHwnd } from "./window-picker";
 
 keyboard.config.autoDelayMs = 0;
 
 const PASTE_SETTLE_MS = 40;
 const FOCUS_SETTLE_MS = 150;
 const SUBMIT_SETTLE_MS = 60;
+const RESTORE_SETTLE_MS = 80;
 
 interface PasteOpts {
   autoSubmit?: boolean;
+  /** HWND to return focus to after paste. Callers pass this when they've
+   *  already captured it (e.g. before a resolution step that might steal
+   *  focus as a side effect). When omitted, we capture current foreground
+   *  at paste time. */
+  previouslyFocused?: bigint;
 }
 
 export class PasteManager {
@@ -37,6 +43,12 @@ export class PasteManager {
     const prev = clipboard.readText();
     clipboard.writeText(text);
 
+    // Snapshot state BEFORE stealing focus so we can put everything back.
+    // Avoids disrupting the user's flow: if they were on Chrome, they stay
+    // on Chrome; if the target was minimized, it gets re-minimized.
+    const previouslyFocused = opts.previouslyFocused ?? getForegroundHwnd();
+    const targetWasMinimized = isHwndIconic(hwnd);
+
     try {
       const focused = focusHwnd(hwnd);
       if (!focused) {
@@ -48,6 +60,17 @@ export class PasteManager {
       await this.sendPasteKeys();
       await new Promise<void>((r) => setTimeout(r, PASTE_SETTLE_MS));
       if (opts.autoSubmit) await this.sendEnter();
+
+      // Restore the target's original minimized state, then return focus to
+      // whichever window the user was actually on. Skip the restore if the
+      // user was already on the target (no disruption to undo).
+      await new Promise<void>((r) => setTimeout(r, RESTORE_SETTLE_MS));
+      if (targetWasMinimized) {
+        minimizeHwnd(hwnd);
+      }
+      if (previouslyFocused && previouslyFocused !== hwnd) {
+        focusHwnd(previouslyFocused);
+      }
     } catch (err) {
       log.error("pasteToHwnd failed:", err);
     } finally {

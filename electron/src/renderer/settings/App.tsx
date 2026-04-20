@@ -4,18 +4,18 @@ import {
   ScrollArea, Badge,
 } from "@mantine/core";
 import {
-  IconSettings, IconBrain, IconWand, IconHistory, IconTarget,
+  IconSettings, IconBrain, IconWand, IconHistory, IconHandOff,
   IconInfoCircle, IconCheck, IconAlertCircle, IconRefresh,
 } from "@tabler/icons-react";
 import type { Config, SystemInfo } from "@shared/types";
 import { GeneralSection } from "./sections/GeneralSection";
 import { ModelSection } from "./sections/ModelSection";
 import { PostProcessingSection } from "./sections/PostProcessingSection";
-import { SmartTranscriptionSection } from "./sections/SmartTranscriptionSection";
+import { HandsFreeSection } from "./sections/HandsFreeSection";
 import { HistorySection } from "./sections/HistorySection";
 import { AboutSection } from "./sections/AboutSection";
 
-type SectionId = "general" | "model" | "post-processing" | "smart" | "history" | "about";
+type SectionId = "general" | "model" | "post-processing" | "hands-free" | "history" | "about";
 
 interface NavItem {
   id: SectionId;
@@ -27,7 +27,7 @@ const NAV: NavItem[] = [
   { id: "general",         label: "General",              icon: IconSettings },
   { id: "model",           label: "Model",                icon: IconBrain },
   { id: "post-processing", label: "Post-processing",      icon: IconWand },
-  { id: "smart",           label: "Smart transcription",  icon: IconTarget },
+  { id: "hands-free",      label: "Hands-free",           icon: IconHandOff },
   { id: "history",         label: "History",              icon: IconHistory },
   { id: "about",           label: "About",                icon: IconInfoCircle },
 ];
@@ -136,23 +136,20 @@ export function App() {
   return (
     <AppShell
       padding={0}
-      header={{ height: 40 }}
+      header={{ height: 52 }}
       navbar={{ width: 200, breakpoint: 0 }}
       styles={{
         root: { background: "var(--bg)", height: "100%" },
-        main: { background: "var(--bg)", display: "flex", flexDirection: "column", height: "calc(100vh - 40px)" },
+        main: { background: "var(--bg)", display: "flex", flexDirection: "column", height: "calc(100vh - 52px)" },
         header: { background: "var(--bg)", borderBottom: "1px solid var(--border)" },
         navbar: { background: "var(--surface)", borderRight: "1px solid var(--border)" },
       }}
     >
       <AppShell.Header style={{ WebkitAppRegion: "drag" } as React.CSSProperties}>
         <Group h="100%" px="md" gap="xs" align="center" justify="space-between" wrap="nowrap">
-          <Group gap="xs" align="center" wrap="nowrap">
-            <img src={logoUrl} alt="Echo" height={20} style={{ objectFit: "contain" }} />
-            <Text size="sm" fw={600} c="dimmed" style={{ letterSpacing: "0.08em" }}>
-              ECHO
-            </Text>
-          </Group>
+          {/* Logo asset already contains the ECHO wordmark — no separate text
+              needed. Height bumped so it's actually readable. */}
+          <img src={logoUrl} alt="Echo" height={34} style={{ objectFit: "contain", display: "block" }} />
           <SaveIndicator saving={saving} saved={saved} />
         </Group>
       </AppShell.Header>
@@ -188,31 +185,33 @@ export function App() {
               {activeItem.title}
             </Text>
 
-            {active === "general" && (
-              <GeneralSection config={config} patch={patch} />
-            )}
-            {active === "model" && (
-              <ModelSection
-                config={config}
-                patch={patch}
-                sysInfo={sysInfo}
-                downloadedModels={downloadedModels}
-                onDelete={handleDeleteModel}
-                deletingModel={deletingModel}
-              />
-            )}
-            {active === "post-processing" && (
-              <PostProcessingSection config={config} patch={patch} />
-            )}
-            {active === "smart" && (
-              <SmartTranscriptionSection config={config} patch={patch} />
-            )}
-            {active === "history" && (
-              <HistorySection config={config} patch={patch} />
-            )}
-            {active === "about" && (
-              <AboutSection sysInfo={sysInfo} />
-            )}
+            <SectionBoundary sectionId={active}>
+              {active === "general" && (
+                <GeneralSection config={config} patch={patch} />
+              )}
+              {active === "model" && (
+                <ModelSection
+                  config={config}
+                  patch={patch}
+                  sysInfo={sysInfo}
+                  downloadedModels={downloadedModels}
+                  onDelete={handleDeleteModel}
+                  deletingModel={deletingModel}
+                />
+              )}
+              {active === "post-processing" && (
+                <PostProcessingSection config={config} patch={patch} />
+              )}
+              {active === "hands-free" && (
+                <HandsFreeSection config={config} patch={patch} />
+              )}
+              {active === "history" && (
+                <HistorySection config={config} patch={patch} />
+              )}
+              {active === "about" && (
+                <AboutSection sysInfo={sysInfo} />
+              )}
+            </SectionBoundary>
           </Box>
         </ScrollArea>
 
@@ -277,3 +276,46 @@ function SaveIndicator({ saving, saved }: { saving: boolean; saved: boolean }) {
 }
 
 void Badge;
+
+// Catches render-time crashes in any section so the whole settings window
+// doesn't go blank. Resets whenever the active tab changes so fixing a
+// section re-mounts cleanly on next nav.
+class SectionBoundary extends React.Component<
+  { sectionId: string; children: React.ReactNode },
+  { error: Error | null }
+> {
+  state = { error: null as Error | null };
+  static getDerivedStateFromError(error: Error) {
+    return { error };
+  }
+  componentDidCatch(error: Error, info: React.ErrorInfo) {
+    console.error("[settings] section render crashed:", error, info);
+  }
+  componentDidUpdate(prev: { sectionId: string }) {
+    if (prev.sectionId !== this.props.sectionId && this.state.error) {
+      this.setState({ error: null });
+    }
+  }
+  render() {
+    if (this.state.error) {
+      return (
+        <Alert icon={<IconAlertCircle size={14} />} color="red" variant="light" radius="md">
+          <Stack gap={6}>
+            <Text size="sm" fw={600}>Render crashed in this section</Text>
+            <Text
+              size="xs"
+              style={{
+                whiteSpace: "pre-wrap",
+                wordBreak: "break-word",
+                fontFamily: "Consolas, monospace",
+              }}
+            >
+              {this.state.error.stack ?? this.state.error.message}
+            </Text>
+          </Stack>
+        </Alert>
+      );
+    }
+    return this.props.children;
+  }
+}

@@ -43,7 +43,7 @@ export class WindowManager {
       titleBarOverlay: {
         color: "#0B1220",
         symbolColor: "#E8EDF5",
-        height: 36,
+        height: 52,
       },
       webPreferences: {
         preload: PRELOAD,
@@ -159,6 +159,10 @@ export class WindowManager {
 
   notifyHistoryUpdated(): void {
     this.settingsWindow?.webContents.send("history:updated");
+  }
+
+  notifySmartTargetChanged(target: unknown): void {
+    this.settingsWindow?.webContents.send("smart:target-changed", target);
   }
 
   updateIndicator(state: IndicatorState): void {
