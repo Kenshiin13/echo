@@ -1,6 +1,6 @@
 {
   "name": "echo",
-  "version": "2.2.0",
+  "version": "2.3.0",
   "description": "Local push-to-talk voice-to-text for Windows",
   "main": "dist/main/main/index.js",
   "author": "Kenshiin13",
