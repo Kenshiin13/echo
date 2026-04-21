@@ -10,6 +10,10 @@
 ; The in-app Settings dropdown covers the same need instead.)
 
 !macro customUnInstall
+  ; Remove the Task Scheduler autostart entry Echo installs when the user
+  ; toggles "Start at login". Silent on failure (task may not exist).
+  nsExec::Exec 'schtasks.exe /delete /tn "EchoAutoStart" /f'
+
   MessageBox MB_YESNO|MB_ICONQUESTION \
     "Also delete Echo's downloaded models and saved settings?$\r$\n$\r$\n\
 Choose No to keep them for a future reinstall." \
