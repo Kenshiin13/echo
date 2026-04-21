@@ -16,6 +16,7 @@ import { UpdaterManager } from "./updater";
 import { HistoryStore } from "./history";
 import { findHwndForTarget, isPidAlive, getForegroundHwnd } from "./window-picker";
 import { SmartTargetStore } from "./smart-target";
+import { TrayReminder } from "./tray-reminder";
 import { getSystemInfo } from "./system-info";
 import { log } from "./logger";
 import { modelExists, downloadModel, binaryMatchesBackend, downloadBinary, restorePreservedModels } from "./model-downloader";
@@ -169,6 +170,8 @@ async function main() {
 
   const tray = new TrayManager(config, windows);
   const updater = new UpdaterManager(windows);
+  const trayReminder = new TrayReminder();
+  windows.setOnSettingsClosed(() => trayReminder.show());
   setupIpc(config, sysInfo, windows, tray, hotkey, autostart, session, transcriber, updater, history, smartTarget);
   updater.scheduleBootCheck();
 

@@ -20,6 +20,13 @@ export class WindowManager {
   private indicatorWindow: BrowserWindow | null = null;
   private indicatorReady = false;
   private pendingState: IndicatorState | null = null;
+  private onSettingsClosed: (() => void) | null = null;
+
+  /** Register a callback fired when the Settings window is closed.
+   *  Used by TrayReminder so "closing the X" triggers the reminder. */
+  setOnSettingsClosed(cb: () => void): void {
+    this.onSettingsClosed = cb;
+  }
 
   openSettings(): void {
     if (this.settingsWindow && !this.settingsWindow.isDestroyed()) {
@@ -70,6 +77,7 @@ export class WindowManager {
 
     this.settingsWindow.on("closed", () => {
       this.settingsWindow = null;
+      this.onSettingsClosed?.();
     });
   }
 
