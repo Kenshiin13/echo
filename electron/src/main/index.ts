@@ -23,6 +23,12 @@ import { modelExists, downloadModel, binaryMatchesBackend, downloadBinary, resto
 async function main() {
   await app.whenReady();
 
+  // Match electron-builder's appId so Windows uses the installed Start Menu
+  // shortcut (with the Echo icon + "Echo" display name) as the source of
+  // notifications. Without this, notifications render as "electron.app.Electron"
+  // with a generic icon, both in dev and in any build that doesn't set it.
+  app.setAppUserModelId("com.echo.voicetotext");
+
   // Inject COOP/COEP on every file:// response so the renderer is treated as
   // crossOriginIsolated. That's what makes SharedArrayBuffer available, which
   // the threaded WASM in onnxruntime-web 1.24 (bundled by @ricky0123/vad-web)
