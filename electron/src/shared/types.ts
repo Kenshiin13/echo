@@ -31,6 +31,11 @@ export interface Config {
   historyEnabled: boolean;
   /** Press Enter after pasting — useful for chat inputs (Claude, ChatGPT). */
   smartAutoSubmit: boolean;
+  /** Auto-update: check GitHub at launch + hourly, download in the
+   *  background when a new release is found, show a Restart & install
+   *  button when ready. Install itself is always user-triggered. When
+   *  off the user only gets updates via the manual Check button. */
+  autoUpdate: boolean;
 }
 
 /** Volatile identity for the Smart-transcription target window.
@@ -71,6 +76,7 @@ export const DEFAULT_CONFIG: Config = {
   audioInputDeviceId: null,
   historyEnabled: true,
   smartAutoSubmit: false,
+  autoUpdate: true,
 };
 
 export interface SystemInfo {

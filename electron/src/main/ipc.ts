@@ -47,6 +47,11 @@ export function setupIpc(
         autostart.setEnabled(newConfig.autostart);
       }
 
+      // Auto-update-check toggled — start/stop the hourly poll.
+      if (prev.autoUpdate !== newConfig.autoUpdate) {
+        updater.syncAutoCheck();
+      }
+
       // Voice activation toggled — swap between hotkey and Silero VAD live
       if (prev.voiceActivation !== newConfig.voiceActivation) {
         if (newConfig.voiceActivation) {

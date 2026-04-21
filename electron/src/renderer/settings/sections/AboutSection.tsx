@@ -1,10 +1,13 @@
-import { Stack, Group, Badge, Text, Anchor, Button, Progress, Alert, Divider, Loader } from "@mantine/core";
+import { Stack, Group, Badge, Text, Anchor, Button, Progress, Alert, Divider, Loader, Switch } from "@mantine/core";
 import { IconRefresh, IconDownload, IconCheck, IconAlertCircle } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
-import type { SystemInfo, UpdateState } from "@shared/types";
+import type { Config, SystemInfo, UpdateState } from "@shared/types";
+import { InfoHint } from "../components/InfoHint";
 
 interface Props {
   sysInfo: SystemInfo;
+  config: Config;
+  patch: <K extends keyof Config>(key: K, val: Config[K]) => void;
 }
 
 interface ReleaseEntry {
@@ -14,7 +17,7 @@ interface ReleaseEntry {
   url: string;
 }
 
-export function AboutSection({ sysInfo }: Props) {
+export function AboutSection({ sysInfo, config, patch }: Props) {
   const [update, setUpdate] = useState<UpdateState>({ phase: "idle" });
   const [releases, setReleases] = useState<ReleaseEntry[] | null>(null);
   const [releasesError, setReleasesError] = useState<string | null>(null);
@@ -67,6 +70,23 @@ export function AboutSection({ sysInfo }: Props) {
           </Badge>
         )}
       </Group>
+
+      <Switch
+        label={
+          <Group gap={4} wrap="nowrap">
+            <Text size="sm" fw={500}>Automatic updates</Text>
+            <InfoHint>
+              Checks GitHub at launch and every hour. When a new version is
+              found, Echo downloads it in the background and shows a toast —
+              install happens only when you click Restart &amp; install.
+              Turn off to only receive updates via the manual Check button.
+            </InfoHint>
+          </Group>
+        }
+        checked={config.autoUpdate}
+        onChange={(e) => patch("autoUpdate", e.currentTarget.checked)}
+        color="echo"
+      />
 
       <UpdateStatus state={update} />
 

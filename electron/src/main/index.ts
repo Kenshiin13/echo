@@ -169,7 +169,7 @@ async function main() {
   );
 
   const tray = new TrayManager(config, windows);
-  const updater = new UpdaterManager(windows);
+  const updater = new UpdaterManager(windows, config);
   const trayReminder = new TrayReminder();
   windows.setOnSettingsClosed(() => trayReminder.show());
   setupIpc(config, sysInfo, windows, tray, hotkey, autostart, session, transcriber, updater, history, smartTarget);

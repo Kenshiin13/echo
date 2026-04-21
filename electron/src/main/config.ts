@@ -30,6 +30,7 @@ export class ConfigStore {
       audioInputDeviceId: this.store.get("audioInputDeviceId"),
       historyEnabled: this.store.get("historyEnabled"),
       smartAutoSubmit: this.store.get("smartAutoSubmit"),
+      autoUpdate: this.store.get("autoUpdate"),
     };
   }
 

@@ -209,7 +209,7 @@ export function App() {
                 <HistorySection config={config} patch={patch} />
               )}
               {active === "about" && (
-                <AboutSection sysInfo={sysInfo} />
+                <AboutSection sysInfo={sysInfo} config={config} patch={patch} />
               )}
             </SectionBoundary>
           </Box>

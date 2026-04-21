@@ -1,17 +1,32 @@
 import { autoUpdater, UpdateInfo, ProgressInfo } from "electron-updater";
-import { app } from "electron";
+import { app, Notification } from "electron";
+import path from "path";
 import { log } from "./logger";
 import { WindowManager } from "./windows";
+import { ConfigStore } from "./config";
 import type { UpdateState } from "../shared/types";
+
+const HOUR_MS = 60 * 60 * 1000;
+const BOOT_DELAY_MS = 5_000;
+const WATCHDOG_MS = 20_000;
+
+function iconPath(): string {
+  return app.isPackaged
+    ? path.join(process.resourcesPath, "assets", "echo_windows_multi_size.ico")
+    : path.join(app.getAppPath(), "..", "assets", "echo_windows_multi_size.ico");
+}
 
 export class UpdaterManager {
   private state: UpdateState = { phase: "idle" };
+  private periodicTimer: NodeJS.Timeout | null = null;
+  /** De-dupe notifications — one toast per new version per app session. */
+  private notifiedVersion: string | null = null;
 
-  constructor(private windows: WindowManager) {
+  constructor(private windows: WindowManager, private config: ConfigStore) {
     autoUpdater.logger = log as unknown as typeof autoUpdater.logger;
-    // User asked for one-click update: detect → auto-download → show
-    // "Restart & install" when ready. We still drive install manually so the
-    // restart happens only when the user clicks the button.
+    // One-click update: detect → auto-download → show "Restart & install"
+    // when ready. Install itself is driven manually so the user picks when
+    // to restart.
     autoUpdater.autoDownload = true;
     autoUpdater.autoInstallOnAppQuit = false;
 
@@ -21,6 +36,7 @@ export class UpdaterManager {
     autoUpdater.on("update-available", (info: UpdateInfo) => {
       log.info(`Update available: ${info.version}`);
       this.setState({ phase: "available", version: info.version });
+      this.notifyAvailable(info.version);
     });
     autoUpdater.on("update-not-available", () => {
       log.info("No update available");
@@ -47,32 +63,45 @@ export class UpdaterManager {
     });
   }
 
-  // electron-updater can't verify updates against a dev build (app version is
-  // derived from package.json but the running exe isn't signed/squashed like
-  // a real release), so we skip the check outside packaged builds.
+  /**
+   * Kick off auto-check behaviour: one delayed boot check + hourly polling.
+   * Both gated on the user's `autoUpdate` preference. Dev builds skip
+   * everything (electron-updater can't verify against a non-packaged exe).
+   */
   scheduleBootCheck(): void {
     if (!app.isPackaged) return;
+    if (!this.config.get().autoUpdate) return;
     setTimeout(() => {
       this.check().catch(() => {});
-    }, 5000);
+    }, BOOT_DELAY_MS);
+    this.startPeriodic();
+  }
+
+  /**
+   * Reconcile the hourly timer with the current `autoUpdate` setting.
+   * Called by the IPC save handler when the user flips the toggle.
+   */
+  syncAutoCheck(): void {
+    if (!app.isPackaged) return;
+    if (this.config.get().autoUpdate) this.startPeriodic();
+    else this.stopPeriodic();
   }
 
   async check(): Promise<void> {
     if (!app.isPackaged) {
-      // Dev builds can't verify updates against themselves — pretend we're
-      // on the latest version so the UI reflects the click at least.
+      // Dev builds can't verify updates against themselves — reflect the
+      // click in the UI as "up to date".
       this.setState({ phase: "not-available", checkedAt: Date.now() });
       return;
     }
     // Watchdog: if autoUpdater silently stalls (DNS, cert, feed 404), don't
-    // let the UI sit on "Checking…" forever. electron-updater sometimes eats
-    // errors without emitting anything.
+    // let the UI sit on "Checking…" forever.
     const watchdog = setTimeout(() => {
       if (this.state.phase === "checking") {
         log.warn("Update check timed out after 20s");
         this.setState({ phase: "error", message: "Update check timed out." });
       }
-    }, 20_000);
+    }, WATCHDOG_MS);
     try {
       await autoUpdater.checkForUpdates();
     } catch (err) {
@@ -91,6 +120,40 @@ export class UpdaterManager {
   quitAndInstall(): void {
     if (this.state.phase !== "downloaded") return;
     autoUpdater.quitAndInstall(true, true);
+  }
+
+  private startPeriodic(): void {
+    if (this.periodicTimer) return;
+    this.periodicTimer = setInterval(() => {
+      if (!this.config.get().autoUpdate) {
+        this.stopPeriodic();
+        return;
+      }
+      this.check().catch(() => {});
+    }, HOUR_MS);
+  }
+
+  private stopPeriodic(): void {
+    if (!this.periodicTimer) return;
+    clearInterval(this.periodicTimer);
+    this.periodicTimer = null;
+  }
+
+  private notifyAvailable(version: string): void {
+    if (this.notifiedVersion === version) return;
+    this.notifiedVersion = version;
+    try {
+      const n = new Notification({
+        title: "Echo update available",
+        body: `Version ${version} is ready. Open Echo → About to install.`,
+        icon: iconPath(),
+      });
+      // Clicking the toast opens Settings where the update UI lives.
+      n.on("click", () => this.windows.openSettings());
+      n.show();
+    } catch (err) {
+      log.warn(`updater: notification failed: ${err}`);
+    }
   }
 
   private setState(state: UpdateState): void {
